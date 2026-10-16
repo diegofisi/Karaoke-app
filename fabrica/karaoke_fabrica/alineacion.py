@@ -33,7 +33,7 @@ from .modelo import Linea, Palabra
 from .texto import PalabraTexto, clave, palabras, romaji, texto_para_alinear
 
 MODELO = "Qwen/Qwen3-ForcedAligner-0.6B"
-MODELO_ASR = "Qwen/Qwen3-ASR-1.7B"
+MODELO_ASR_POR_DEFECTO = "Qwen/Qwen3-ASR-1.7B"  # el real lo elige recursos.detectar()
 IDIOMA_QWEN = {"es": "Spanish", "en": "English", "ja": "Japanese"}
 QWEN_A_IDIOMA = {v: k for k, v in IDIOMA_QWEN.items()}
 SR = 16000
@@ -97,13 +97,32 @@ def _asr():
     from qwen_asr import Qwen3ASRModel
 
     disp, tipo = _dispositivo()
-    log.info("Cargando %s en %s", MODELO_ASR, disp)
+    from .recursos import detectar
+
+    modelo_asr = detectar().asr
+    log.info("Cargando %s en %s (perfil %s)", modelo_asr, disp, detectar().nombre)
     if disp == "cpu":
         aviso("Sin GPU: reconocer la voz puede tardar varios minutos por cancion. La barra avanza por partes.")
     return Qwen3ASRModel.from_pretrained(
-        MODELO_ASR, dtype=tipo, device_map=disp, max_inference_batch_size=8, max_new_tokens=1024,
+        modelo_asr, dtype=tipo, device_map=disp, max_inference_batch_size=8, max_new_tokens=1024,
         forced_aligner=MODELO, forced_aligner_kwargs=dict(dtype=tipo, device_map=disp),
     )
+
+
+def _liberar_asr_si_falta_memoria() -> None:
+    """Perfil medio (poca VRAM): el reconocedor sale de memoria antes de alinear."""
+    from .recursos import detectar
+
+    if detectar().nombre != "medio":
+        return
+    import gc
+
+    import torch
+
+    _asr.cache_clear()
+    gc.collect()
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
 
 
 def liberar_modelos() -> None:
@@ -564,6 +583,7 @@ def alinear(letra: Letra, audio: np.ndarray, idioma: str, duracion: float,
         etapa("alineacion", 0.05, "Reconociendo la voz para situar cada linea")
         _, unidades_asr = transcribir(audio, idioma, lambda x: etapa(
             "alineacion", 0.05 + 0.25 * x, f"Reconociendo la voz ({round(x * 100)} %)"))
+    _liberar_asr_si_falta_memoria()
 
     etapa("alineacion", 0.3, "Emparejando la letra con lo reconocido")
     anclas_planas = anclar(planas, unidades_asr, idioma)

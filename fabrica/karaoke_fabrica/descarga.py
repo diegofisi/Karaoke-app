@@ -190,7 +190,7 @@ def descargar(url: str, carpeta: Path, sesion: SesionYoutube | None = None) -> M
 
     if destino.exists():
         log.info("original.wav ya existe; se reutiliza")
-        etapa("descarga", 1.0, "Audio ya descargado")
+        etapa("descarga", 1.0, "Esta cancion ya se descargo antes: se reutiliza")
         return meta
 
     def progreso(d: dict) -> None:
@@ -233,8 +233,9 @@ def importar_local(archivo: Path, carpeta: Path, titulo: str, artista: str) -> M
 
     destino = carpeta / "original.wav"
     etapa("descarga", 0.0, "Importando audio local")
-    if not destino.exists():
+    reutilizado = destino.exists()
+    if not reutilizado:
         a_wav(archivo, destino)
     duracion = sf.info(str(destino)).duration
-    etapa("descarga", 1.0, "Audio importado")
+    etapa("descarga", 1.0, "Este archivo ya se importo antes: se reutiliza" if reutilizado else "Audio importado")
     return Metadatos(youtube_id=None, titulo=titulo, artista=artista, duracion=float(duracion))

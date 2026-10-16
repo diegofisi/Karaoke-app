@@ -53,3 +53,8 @@ para no repetirlas.
   (`RunEvent::Exit` → `cerrar_todo`) y si falla su hilo vigilante — por qué:
   Python con torch cargado seguía vivo tras cerrar la ventana — dónde:
   `src-tauri/src/lib.rs`, `comandos/fabrica.rs`.
+- 2026-10-16 — El id de una canción local se calcula sobre el archivo
+  COMPLETO — por qué: con solo los primeros 4 MiB, dos MP3 del mismo disco
+  (carátula grande al inicio) podían compartir id y reutilizar el audio de
+  la otra canción — dónde: `src-tauri/src/fabrica.rs` (`id_de_archivo`) y
+  `fabrica/karaoke_fabrica/pipeline.py` (`id_cancion`), que deben coincidir.

@@ -94,13 +94,24 @@ pub fn id_de_url(url: &str) -> Option<String> {
     Some(format!("yt-{}", captura.get(1)?.as_str()))
 }
 
-/// `local-<12 hex>`: sha1 de los primeros 4 MiB, como `pipeline.id_cancion`.
+/// `local-<12 hex>`: sha1 del archivo COMPLETO, como `pipeline.id_cancion`.
+///
+/// Antes solo se miraban los primeros 4 MiB (2026-10-16): muchos MP3 empiezan
+/// por la caratula del album, y dos canciones del mismo disco podian dar el
+/// mismo id y reutilizar el audio de la otra.
 pub fn id_de_archivo(ruta: &Path) -> Result<String, String> {
-    let mut bytes = Vec::with_capacity(4 * 1024 * 1024);
-    File::open(ruta)
-        .and_then(|f| f.take(4 * 1024 * 1024).read_to_end(&mut bytes))
-        .map_err(|e| format!("No se pudo leer el archivo {}: {e}", ruta.display()))?;
-    let hex = sha1_smol::Sha1::from(&bytes).digest().to_string();
+    let error = |e: std::io::Error| format!("No se pudo leer el archivo {}: {e}", ruta.display());
+    let mut archivo = File::open(ruta).map_err(error)?;
+    let mut sha = sha1_smol::Sha1::new();
+    let mut bloque = vec![0u8; 1024 * 1024];
+    loop {
+        let n = archivo.read(&mut bloque).map_err(error)?;
+        if n == 0 {
+            break;
+        }
+        sha.update(&bloque[..n]);
+    }
+    let hex = sha.digest().to_string();
     Ok(format!("local-{}", &hex[..12]))
 }
 
@@ -282,6 +293,7 @@ pub fn diagnostico(u: &Ubicacion) -> EstadoFabrica {
         cuda: false,
         gpu: None,
         mensaje: Some(mensaje),
+        perfil: None,
         requisitos: Vec::new(),
         puede_instalar: false,
     };
@@ -313,6 +325,10 @@ pub fn diagnostico(u: &Ubicacion) -> EstadoFabrica {
         gpu: v.get("gpu").and_then(Value::as_str).map(str::to_string),
         mensaje: (aceleracion == "cpu")
             .then(|| "Sin GPU: procesar una cancion puede tardar mucho.".to_string()),
+        perfil: v
+            .get("perfil_descripcion")
+            .and_then(Value::as_str)
+            .map(str::to_string),
         requisitos: Vec::new(),
         puede_instalar: false,
     }
@@ -352,13 +368,25 @@ mod pruebas {
     }
 
     #[test]
-    fn id_de_archivo_es_sha1_de_los_primeros_4_mib() {
+    fn id_de_archivo_es_sha1_del_archivo_completo() {
         let dir = std::env::temp_dir().join("karaoke_prueba_id");
         fs::create_dir_all(&dir).unwrap();
         let ruta = dir.join("a.bin");
         fs::write(&ruta, b"hola").unwrap();
         // sha1("hola") = 99800b85d3383e3a2fb45eb7d0066a4879a9dad0
         assert_eq!(id_de_archivo(&ruta).unwrap(), "local-99800b85d338");
+    }
+
+    #[test]
+    fn mismo_inicio_distinto_final_da_ids_distintos() {
+        // Dos MP3 del mismo disco: la misma caratula de 5 MB al inicio.
+        let dir = std::env::temp_dir().join("karaoke_prueba_id_inicio");
+        fs::create_dir_all(&dir).unwrap();
+        let inicio = vec![7u8; 5 * 1024 * 1024];
+        let (a, b) = (dir.join("a.mp3"), dir.join("b.mp3"));
+        fs::write(&a, [inicio.as_slice(), b"cancion uno"].concat()).unwrap();
+        fs::write(&b, [inicio.as_slice(), b"cancion dos"].concat()).unwrap();
+        assert_ne!(id_de_archivo(&a).unwrap(), id_de_archivo(&b).unwrap());
     }
 
     #[test]

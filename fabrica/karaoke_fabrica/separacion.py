@@ -13,7 +13,7 @@ from pathlib import Path
 
 from .eventos import ErrorFabrica, etapa, log
 
-MODELO_POR_DEFECTO = "vocals_mel_band_roformer.ckpt"
+MODELO_POR_DEFECTO = "vocals_mel_band_roformer.ckpt"  # el real lo elige recursos.detectar()
 
 
 def carpeta_modelos() -> Path:
@@ -27,7 +27,7 @@ def separar(original: Path, carpeta: Path, modelo: str = MODELO_POR_DEFECTO) -> 
     voz = carpeta / "voz.wav"
     instrumental = carpeta / "instrumental.wav"
     if voz.exists() and instrumental.exists():
-        etapa("separacion", 1.0, "Pistas ya separadas")
+        etapa("separacion", 1.0, "Esta cancion ya estaba separada: se reutiliza")
         return voz, instrumental
 
     etapa("separacion", 0.0, f"Cargando el separador ({modelo})")

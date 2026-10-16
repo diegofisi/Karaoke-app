@@ -34,13 +34,13 @@ activa; los detalles están en `references/project.md` de cada skill.
   verificó.
 - **Nunca hagas pasar la comprobación debilitándola.** Ni `#[allow(...)]`
   nuevo, ni `// @ts-expect-error`, ni relajar `tsconfig` (el hook
-  `protect-config` lo bloquea), ni saltar un test, ni `pytest -k` para
+  no se toca aunque el hook `protect-config` esté desactivado), ni saltar un test, ni `pytest -k` para
   esquivar uno. Arregla el código; si la comprobación está mal, dilo y para.
 - **El implementador no firma la implementación.** Más de un archivo, o
   cualquier toque al contrato: pásalo al agente `verifier` con la lista de
   archivos (o `git diff`) y reporta su veredicto.
-- **El hook `Stop` es un informe, no una puerta.** Nunca bloquea; su silencio
-  no sustituye a `verify`.
+- **Los hooks de Claude están desactivados** (2026-10-16, decisión del usuario):
+  nada comprueba solo al terminar; `npm run verify` es la única puerta.
 - **Tres intentos.** Si el mismo fallo sobrevive a tres arreglos, para y
   escala con el historial.
 - **No lances `npm run dev`, `npm run tauri dev` ni `vite`**: no terminan.

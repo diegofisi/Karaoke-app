@@ -9,6 +9,8 @@ export interface EstadoFabrica {
   cuda: boolean;
   gpu: string | null;
   mensaje: string | null;
+  /** Modelos elegidos para este equipo, en texto. */
+  perfil: string | null;
   requisitos: Requisito[];
   /** La app puede instalar la fábrica sola. */
   puede_instalar: boolean;

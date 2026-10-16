@@ -19,7 +19,8 @@ cambio (struct Rust, interfaz TypeScript, modelo Python, esta tabla).
 ## 2. Carpeta de una canción
 
 `<datos>/canciones/<id>/`, donde `<datos>` es `app_data_dir` de Tauri y `<id>`
-es `yt-<id de YouTube>` o `local-<hash>`.
+es `yt-<id de YouTube>` o `local-<hash>` (los 12 primeros hex del sha1 del
+archivo completo; Rust y la fábrica lo calculan igual).
 
 | Archivo | Quién lo escribe | Contenido |
 |---|---|---|
@@ -121,7 +122,9 @@ a stderr y a `fabrica.log`).
 `guardado`.
 
 `diagnostico` escribe un único objeto
-`{"tipo":"diagnostico","python":"3.12.x","sistema":"Windows"|"Darwin","torch":"2.x","cuda":true,"aceleracion":"cuda"|"mps"|"cpu","gpu":"NVIDIA ..."|"Apple arm64 (MPS)"|null,"modelos":"<carpeta>"}`.
+`{"tipo":"diagnostico","python":"3.12.x","sistema":"Windows"|"Darwin","torch":"2.x","cuda":true,"aceleracion":"cuda"|"mps"|"cpu","gpu":"NVIDIA ..."|"Apple arm64 (MPS)"|null,"modelos":"<carpeta>",
+"perfil":"alto"|"medio"|"basico"|null,"perfil_descripcion":"..."}`. El perfil lo elige
+`recursos.py` según la GPU y la memoria (separador y reconocedor); `KARAOKE_PERFIL` lo fuerza.
 `aceleracion` = `mps` es la GPU de Apple Silicon en Mac.
 
 ## 5. Comandos de Tauri
@@ -161,6 +164,7 @@ argumentos se escriben en `snake_case` también en TypeScript
 ```ts
 EstadoFabrica   { lista: boolean,   // todos los requisitos obligatorios en verde
                   python: string | null, cuda: boolean, gpu: string | null, mensaje: string | null,
+                  perfil: string | null,   // descripción de los modelos elegidos para el equipo
                   requisitos: Requisito[], puede_instalar: boolean }
 Requisito       { id: "fabrica" | "ffmpeg" | "javascript" | "gpu", nombre: string, ok: boolean,
                   obligatorio: boolean,   // gpu: false (solo avisa)

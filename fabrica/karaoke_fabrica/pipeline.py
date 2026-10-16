@@ -15,7 +15,7 @@ from pathlib import Path
 
 import numpy as np
 
-from . import __version__, alineacion, descarga, letra as mod_letra, notas, separacion, tono
+from . import __version__, alineacion, recursos, descarga, letra as mod_letra, notas, separacion, tono
 from .eventos import ErrorFabrica, aviso, etapa, log
 from .modelo import Cancion, CurvaTono, Origen, guardar
 from .texto import detectar_idioma
@@ -30,7 +30,7 @@ class Peticion:
     artista: str | None = None
     idioma: str | None = None
     letra: Path | None = None
-    separador: str = separacion.MODELO_POR_DEFECTO
+    separador: str | None = None  # None = el del perfil del equipo (recursos.py)
     alinear_sobre: str = "voz"  # "voz" | "mezcla"
     cookies: Path | None = None
     navegador: str | None = None
@@ -40,7 +40,13 @@ def id_cancion(p: Peticion) -> str:
     if p.url:
         return f"yt-{descarga.id_youtube(p.url)}"
     assert p.audio is not None
-    h = hashlib.sha1(p.audio.read_bytes()[: 4 * 1024 * 1024]).hexdigest()[:12]
+    # Archivo completo (antes, los primeros 4 MiB: dos MP3 con la misma caratula
+    # al inicio podian dar el mismo id). Igual que fabrica.rs id_de_archivo.
+    sha = hashlib.sha1()
+    with p.audio.open("rb") as f:
+        for bloque in iter(lambda: f.read(1024 * 1024), b""):
+            sha.update(bloque)
+    h = sha.hexdigest()[:12]
     return f"local-{h}"
 
 
@@ -78,7 +84,8 @@ def procesar(p: Peticion) -> tuple[str, Path]:
         meta.artista = p.artista
     original = p.salida / "original.wav"
 
-    voz, _ = separacion.separar(original, p.salida, p.separador)
+    separador = p.separador or recursos.detectar().separador
+    voz, _ = separacion.separar(original, p.salida, separador)
 
     letra = mod_letra.obtener(meta.artista, meta.titulo, meta.duracion, p.letra, p.salida)
     audio_voz = _audio_16k(voz)
@@ -90,6 +97,7 @@ def procesar(p: Peticion) -> tuple[str, Path]:
         etapa("letra", 0.3, "Sin letra disponible: transcribiendo la voz (Qwen3-ASR)")
         detectado, unidades = alineacion.transcribir(audio, p.idioma, lambda x: etapa(
             "letra", 0.3 + 0.65 * x, f"Transcribiendo la voz ({round(x * 100)} %)"))
+        alineacion._liberar_asr_si_falta_memoria()
         idioma_t = p.idioma or detectado
         if not unidades or idioma_t not in alineacion.IDIOMA_QWEN:
             raise ErrorFabrica("letra", "No se encontro letra y no se pudo transcribir la voz.")
@@ -116,7 +124,7 @@ def procesar(p: Peticion) -> tuple[str, Path]:
     cancion = Cancion(
         id=cid, titulo=meta.titulo, artista=meta.artista, duracion=meta.duracion, idioma=idioma,  # type: ignore[arg-type]
         origen=Origen(
-            youtube_id=meta.youtube_id, letra=letra.origen, separador=p.separador,  # type: ignore[arg-type]
+            youtube_id=meta.youtube_id, letra=letra.origen, separador=separador,  # type: ignore[arg-type]
             alineador=alineacion.MODELO, tono="swift-f0", fabrica_version=__version__,
             creada=datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         ),
@@ -152,4 +160,12 @@ def diagnostico() -> dict:
         info["gpu"] = None
         info["error_torch"] = str(e)
     info["modelos"] = str(separacion.carpeta_modelos())
+    try:
+        perfil = recursos.detectar()
+        info["perfil"] = perfil.nombre
+        info["perfil_descripcion"] = perfil.descripcion
+    except Exception as e:  # sin torch: no hay perfil
+        info["perfil"] = None
+        info["perfil_descripcion"] = None
+        log.warning("No se pudo detectar el perfil del equipo: %s", e)
     return json.loads(json.dumps(info))

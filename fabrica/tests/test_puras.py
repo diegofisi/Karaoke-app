@@ -284,3 +284,12 @@ def test_bloqueo_con_navegador_no_se_confunde_con_fallo_de_cookies():
     assert _error_de_sesion(bloqueo, SesionYoutube(navegador="firefox")) is None
     dpapi = Exception("ERROR: Failed to decrypt with DPAPI")
     assert "Firefox" in _error_de_sesion(dpapi, SesionYoutube(navegador="chrome"))
+
+
+def test_id_local_es_sha1_del_archivo_completo(tmp_path):
+    from karaoke_fabrica.pipeline import Peticion, id_cancion
+
+    archivo = tmp_path / "a.bin"
+    archivo.write_bytes(b"hola")
+    # Mismo valor que la prueba de Rust (src-tauri/src/fabrica.rs): los dos lados deben coincidir.
+    assert id_cancion(Peticion(salida=tmp_path, audio=archivo)) == "local-99800b85d338"

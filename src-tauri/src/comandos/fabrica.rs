@@ -65,6 +65,7 @@ pub async fn estado_fabrica(estado: State<'_, Estado>) -> Result<EstadoFabrica, 
     let ffmpeg = herramientas::buscar("ffmpeg");
     let js = herramientas::runtime_js();
     let gpu = r.gpu.clone();
+    let perfil = r.perfil.clone();
     r.puede_instalar = herramientas::buscar("uv").is_some() && !elegida && !por_variable;
     r.requisitos = vec![
         requisito(
@@ -110,10 +111,13 @@ pub async fn estado_fabrica(estado: State<'_, Estado>) -> Result<EstadoFabrica, 
             "GPU",
             fabrica_ok && gpu.is_some(),
             false,
-            match &gpu {
-                Some(g) => g.clone(),
-                None if fabrica_ok => "Sin GPU: procesar una canción puede tardar mucho.".into(),
-                None => "Se comprueba cuando la fábrica esté instalada.".into(),
+            match (&perfil, &gpu) {
+                (Some(p), _) => p.clone(),
+                (None, Some(g)) => g.clone(),
+                (None, None) if fabrica_ok => {
+                    "Sin GPU: procesar una canción puede tardar mucho.".into()
+                }
+                (None, None) => "Se comprueba cuando la fábrica esté instalada.".into(),
             },
         ),
     ];

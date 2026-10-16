@@ -15,6 +15,8 @@ pub struct EstadoFabrica {
     pub cuda: bool,
     pub gpu: Option<String>,
     pub mensaje: Option<String>,
+    /// Modelos elegidos para este equipo (fabrica/karaoke_fabrica/recursos.py).
+    pub perfil: Option<String>,
     /// Lo que se comprueba antes de procesar (CONTRATO seccion 5).
     pub requisitos: Vec<Requisito>,
     /// La app puede instalar la fabrica sola (lleva uv dentro).

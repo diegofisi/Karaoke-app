@@ -70,7 +70,7 @@ Lee `docs/CONTRATO.md` y el `references/project.md` de la skill que toque
   `# type: ignore`, `pytest.skip` o `xfail` para que pase.
 - `unwrap()` / `expect()` para callar un tipo.
 - Relajar `tsconfig.json`, `pytest.ini`, versiones de `Cargo.toml`,
-  `capabilities`. `protect-config` lo bloquea; no busques la vuelta.
+  `capabilities`. no se tocan (el hook `protect-config` está desactivado, la regla no).
 - `cargo fmt`, `cargo update`, `npm install`, `pip install`, renombrar,
   tocar archivos donde no hay error.
 - Borrar un test o un `#[cfg(test)]` para que compile.

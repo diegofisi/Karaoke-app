@@ -13,7 +13,7 @@ CLAUDE.md (raíz)          punteros: carpetas, fuentes de verdad, tabla glob →
   settings.json           sin atribución a IA; permisos; deny de dev/vite/push --force/--no-verify; hooks
   settings.local.json     permisos locales del usuario; no se versiona
   corrections.md          memoria entre sesiones: una línea fechada por corrección repetida
-  hooks/
+  hooks/                  DESACTIVADOS por el usuario (2026-10-16): codigo comentado y sin conexion en settings.json
     protect-config.mjs    PreToolUse Edit|Write: bloquea editar tsconfig/vite/clippy/rustfmt/eslint/prettier/pytest.ini/ruff existentes (escape: KARAOKE_ALLOW_CONFIG=1)
     block-git-bypass.mjs  PreToolUse Bash: bloquea --no-verify / -n / core.hooksPath en git
     check-edited.mjs      PostToolUse Edit|Write: pasa scripts/check-rules.mjs por el archivo escrito y BLOQUEA si rompe una regla (hoy el script no existe: no hace nada)

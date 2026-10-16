@@ -65,5 +65,6 @@ los pida:
 | `commit-msg` | rechazar trailers de atribución y asuntos de más de 72 caracteres |
 | `pre-push` | `npm run verify` |
 
-`.claude/hooks/block-git-bypass.mjs` ya impide al agente saltárselos con
+Los hooks de Claude están desactivados (2026-10-16); `settings.json` sigue
+denegando `git commit --no-verify` / `-n`. Igualmente, no te saltes los hooks de git con
 `--no-verify`, `-n` o `-c core.hooksPath=`.

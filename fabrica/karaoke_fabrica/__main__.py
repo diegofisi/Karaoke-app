@@ -56,11 +56,10 @@ def main(argv: list[str] | None = None) -> int:
 
     eventos.preparar_salida(args.salida)
     from .pipeline import Peticion, procesar
-    from .separacion import MODELO_POR_DEFECTO
 
     peticion = Peticion(
         salida=args.salida, url=args.url, audio=args.audio, titulo=args.titulo, artista=args.artista,
-        idioma=args.idioma, letra=args.letra, separador=args.separador or MODELO_POR_DEFECTO,
+        idioma=args.idioma, letra=args.letra, separador=args.separador,
         alinear_sobre=args.alinear_sobre, cookies=args.cookies, navegador=args.navegador,
     )
     try:

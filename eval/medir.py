@@ -36,7 +36,10 @@ import numpy as np
 
 RAIZ = Path(__file__).resolve().parents[1]
 DATOS = RAIZ / "eval" / "datos" / "jamendolyrics"
-SALIDAS = RAIZ / "eval" / "datos" / "salidas"
+# KARAOKE_EVAL_SALIDAS: otra carpeta, para medir otro separador sin mezclar sus voz.wav.
+import os  # noqa: E402
+
+SALIDAS = Path(os.environ["KARAOKE_EVAL_SALIDAS"]) if os.environ.get("KARAOKE_EVAL_SALIDAS") else RAIZ / "eval" / "datos" / "salidas"
 RESULTADOS = RAIZ / "eval" / "resultados"
 
 sys.path.insert(0, str(RAIZ / "fabrica"))

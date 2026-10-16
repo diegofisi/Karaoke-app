@@ -111,3 +111,15 @@ abre candidatos que antes estaban descartados, y cada uno se mide con `eval/`:
   `<datos>/entorno/`. Probado desde cero en Windows (5/5 pasos) y procesando
   una canción de YouTube con un PATH limpio (sin ffmpeg ni Node del sistema).
 - Sin probar en un Mac real.
+
+## Perfiles por equipo (2026-10-16, versión 0.2.1)
+
+La app detecta la GPU y la memoria y elige sola (`fabrica/karaoke_fabrica/recursos.py`).
+Medido en las 10 canciones de validación (`--desde 5`), inicios a ≤100 ms:
+
+| Perfil | Equipo | Separador | Reconocedor | Resultado |
+|---|---|---|---|---|
+| alto | NVIDIA ≥ 6 GB o Mac ≥ 16 GB | Mel-RoFormer | Qwen3-ASR 1,7B | 81,7 % |
+| medio | NVIDIA < 6 GB o Mac < 16 GB | Mel-RoFormer | 1,7B, liberado antes de alinear | (mismos modelos que alto) |
+| basico | sin GPU | Kim_Vocal_2 (ONNX) | 1,7B, todos los núcleos | 80,5 % |
+| descartado | — | Mel-RoFormer | Qwen3-ASR 0,6B | 67,1 % (español 43,5 %) |
