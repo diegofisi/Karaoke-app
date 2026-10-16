@@ -100,6 +100,7 @@ Ejecución:
 
 ```
 python -m karaoke_fabrica procesar --url <url> --salida <carpeta> [--idioma es|en|ja] [--letra <archivo.txt|.lrc>]
+                                   [--cookies <cookies.txt> | --navegador <firefox|safari|...>]
 python -m karaoke_fabrica procesar --audio <archivo> --titulo <t> --artista <a> --salida <carpeta> [...]
 python -m karaoke_fabrica diagnostico
 python -m karaoke_fabrica preparar     # descarga todos los modelos de antemano
@@ -173,10 +174,12 @@ Dificultad      = "facil" | "normal" | "dificil"
 Modo            = "practica" | "puntuacion"
 Ajustes         { microfono: string | null, latencia_ms: number, dificultad: Dificultad,
                   volumen_musica: number, volumen_guia: number, volumen_voz: number,
-                  mostrar_romaji: boolean, grabar: boolean, carpeta_fabrica: string | null }
+                  mostrar_romaji: boolean, grabar: boolean, carpeta_fabrica: string | null,
+                  youtube_cookies: string | null,   // cookies.txt; prioridad sobre el navegador
+                  youtube_navegador: string | null } // firefox | safari | chrome | edge | brave
                   // volúmenes 0–1; volumen_guia 0 = sin voz guía. volumen_voz 0–3 (1 = automático).
                   // carpeta_fabrica: la del repositorio o `fabrica/`; null = la de desarrollo.
-                  // Por defecto: null, 150, "normal", 0.9, 0, 1, true, false, null
+                  // Por defecto: null, 150, "normal", 0.9, 0, 1, true, false, null, null, null
 ResultadoCalibracion { latencia_ms: number, medidas_ms: number[], fiable: boolean }
 ResultadoJuego  { puntos: number, nivel: Nivel, mejor_combo: number, precision_media: number,
                   por_calificacion: { perfecta, bien, regular, fallo }, record_anterior: number | null, es_record: boolean }

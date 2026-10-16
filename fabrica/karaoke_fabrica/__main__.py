@@ -26,6 +26,8 @@ def main(argv: list[str] | None = None) -> int:
     pr.add_argument("--letra", type=Path, help="Archivo .txt o .lrc con la letra")
     pr.add_argument("--separador", default=None)
     pr.add_argument("--alinear-sobre", choices=["voz", "mezcla"], default="voz")
+    pr.add_argument("--cookies", type=Path, help="cookies.txt de YouTube (si pide confirmar que no eres un bot)")
+    pr.add_argument("--navegador", help="Leer la sesion de YouTube de este navegador (firefox, safari, chrome...)")
 
     sub.add_parser("diagnostico", help="Python, GPU y carpeta de modelos")
     sub.add_parser("preparar", help="Descarga todos los modelos de antemano")
@@ -59,7 +61,7 @@ def main(argv: list[str] | None = None) -> int:
     peticion = Peticion(
         salida=args.salida, url=args.url, audio=args.audio, titulo=args.titulo, artista=args.artista,
         idioma=args.idioma, letra=args.letra, separador=args.separador or MODELO_POR_DEFECTO,
-        alinear_sobre=args.alinear_sobre,
+        alinear_sobre=args.alinear_sobre, cookies=args.cookies, navegador=args.navegador,
     )
     try:
         cid, ruta = procesar(peticion)

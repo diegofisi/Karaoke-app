@@ -36,3 +36,10 @@ Las entradas del 2026-10-15 vienen de las dos versiones anteriores (rama
   exigente": con 0,65 empeoró (66,1 % frente a 67,5 %) porque mandaba al
   respaldo líneas buenas. Para las líneas dudosas funciona mejor una segunda
   opinión (MMS) — dónde: `alineacion.py` (`CONFIANZA_MINIMA`, `USAR_MMS`).
+- 2026-10-16 — YouTube a veces responde "Sign in to confirm you're not a bot"
+  (bloqueo por conexión, tras muchas descargas). Lo fiable es la sesión del
+  usuario: `--cookies <cookies.txt>` o `--navegador`. En Windows yt-dlp no
+  puede leer cookies de Chrome, Brave (cifrado DPAPI) ni Edge (bloqueado si
+  está abierto): solo Firefox o el archivo. Los clientes alternativos (tv,
+  web_safari, mweb) fallaban incluso sin bloqueo: no se usan — dónde:
+  `fabrica/karaoke_fabrica/descarga.py`.

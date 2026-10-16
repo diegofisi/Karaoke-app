@@ -21,6 +21,7 @@ usa las anclas que tenga y reparte el resto, y queda marcada como "respaldo".
 from __future__ import annotations
 
 import difflib
+from collections.abc import Callable
 from dataclasses import dataclass
 from functools import lru_cache
 
@@ -47,6 +48,7 @@ ACUERDO = 0.35              # s: la alineacion fina y el ancla "coinciden" si di
 LOTE = 12                   # lineas por llamada al alineador
 TROZO_MINIMO = 15.0         # s, reconocimiento por trozos cortos
 TROZO_MAXIMO = 30.0
+TROZOS_POR_GRUPO = 2         # trozos por llamada al reconocedor (para informar del avance)
 GRUPO_MAXIMO = 20.0         # s: lineas situadas se agrupan hasta este largo
 GRUPO_LIMITE = 40.0         # s: un tramo sin situar mas largo se parte
 USAR_MMS = True             # segunda opinion (MMS) para lo que Qwen no alinea
@@ -96,6 +98,8 @@ def _asr():
 
     disp, tipo = _dispositivo()
     log.info("Cargando %s en %s", MODELO_ASR, disp)
+    if disp == "cpu":
+        aviso("Sin GPU: reconocer la voz puede tardar varios minutos por cancion. La barra avanza por partes.")
     return Qwen3ASRModel.from_pretrained(
         MODELO_ASR, dtype=tipo, device_map=disp, max_inference_batch_size=8, max_new_tokens=1024,
         forced_aligner=MODELO, forced_aligner_kwargs=dict(dtype=tipo, device_map=disp),
@@ -141,17 +145,25 @@ def trozos_por_silencio(audio: np.ndarray, minimo: float = TROZO_MINIMO, maximo:
     return trozos
 
 
-def transcribir(audio: np.ndarray, idioma: str | None) -> tuple[str | None, list[Unidad]]:
+def transcribir(audio: np.ndarray, idioma: str | None,
+                avance: Callable[[float], None] | None = None) -> tuple[str | None, list[Unidad]]:
     """Reconoce la voz con marcas por unidad, en trozos cortos. Devuelve (idioma detectado, unidades).
 
     Sin contexto: con la letra como contexto el modelo la copia entera y le
     pone tiempos inventados (medido el 2026-10-15: 629 unidades para 322 palabras).
+    `avance` recibe de 0 a 1 tras cada grupo de trozos: sin GPU esto tarda
+    minutos y la barra no puede quedarse quieta (visto el 2026-10-16).
     """
     trozos = trozos_por_silencio(audio)
-    resultados = _asr().transcribe(
-        audio=[(audio[a:b], SR) for a, b in trozos],
-        language=IDIOMA_QWEN.get(idioma or "", None), return_time_stamps=True,
-    )
+    resultados: list = []
+    for g in range(0, len(trozos), TROZOS_POR_GRUPO):
+        grupo = trozos[g:g + TROZOS_POR_GRUPO]
+        resultados.extend(_asr().transcribe(
+            audio=[(audio[a:b], SR) for a, b in grupo],
+            language=IDIOMA_QWEN.get(idioma or "", None), return_time_stamps=True,
+        ))
+        if avance is not None:
+            avance(min(1.0, (g + len(grupo)) / len(trozos)))
     unidades: list[Unidad] = []
     idiomas: list[str] = []
     for (a, _), res in zip(trozos, resultados):
@@ -550,7 +562,8 @@ def alinear(letra: Letra, audio: np.ndarray, idioma: str, duracion: float,
 
     if unidades_asr is None:
         etapa("alineacion", 0.05, "Reconociendo la voz para situar cada linea")
-        _, unidades_asr = transcribir(audio, idioma)
+        _, unidades_asr = transcribir(audio, idioma, lambda x: etapa(
+            "alineacion", 0.05 + 0.25 * x, f"Reconociendo la voz ({round(x * 100)} %)"))
 
     etapa("alineacion", 0.3, "Emparejando la letra con lo reconocido")
     anclas_planas = anclar(planas, unidades_asr, idioma)

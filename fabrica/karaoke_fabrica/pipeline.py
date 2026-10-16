@@ -32,6 +32,8 @@ class Peticion:
     letra: Path | None = None
     separador: str = separacion.MODELO_POR_DEFECTO
     alinear_sobre: str = "voz"  # "voz" | "mezcla"
+    cookies: Path | None = None
+    navegador: str | None = None
 
 
 def id_cancion(p: Peticion) -> str:
@@ -61,10 +63,12 @@ def procesar(p: Peticion) -> tuple[str, Path]:
     cid = id_cancion(p)
 
     if p.url:
-        meta = descarga.descargar(p.url, p.salida)
+        meta = descarga.descargar(p.url, p.salida, descarga.SesionYoutube(p.cookies, p.navegador))
     else:
         assert p.audio is not None
-        meta = descarga.importar_local(p.audio, p.salida, p.titulo or p.audio.stem, p.artista or "")
+        # Sin titulo ni artista: se sacan del nombre del archivo ("Artista - Titulo.mp3").
+        artista_n, titulo_n = descarga.artista_y_titulo_de_nombre(p.audio.stem)
+        meta = descarga.importar_local(p.audio, p.salida, p.titulo or titulo_n, p.artista or artista_n)
     if p.titulo:
         meta.titulo = p.titulo
     else:
@@ -84,7 +88,8 @@ def procesar(p: Peticion) -> tuple[str, Path]:
     unidades = None
     if letra is None:
         etapa("letra", 0.3, "Sin letra disponible: transcribiendo la voz (Qwen3-ASR)")
-        detectado, unidades = alineacion.transcribir(audio, p.idioma)
+        detectado, unidades = alineacion.transcribir(audio, p.idioma, lambda x: etapa(
+            "letra", 0.3 + 0.65 * x, f"Transcribiendo la voz ({round(x * 100)} %)"))
         idioma_t = p.idioma or detectado
         if not unidades or idioma_t not in alineacion.IDIOMA_QWEN:
             raise ErrorFabrica("letra", "No se encontro letra y no se pudo transcribir la voz.")

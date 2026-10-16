@@ -84,21 +84,103 @@ def _artista_y_titulo(info: dict) -> tuple[str, str]:
     return canal, crudo.strip()
 
 
-def descargar(url: str, carpeta: Path) -> Metadatos:
+@dataclass
+class SesionYoutube:
+    """Sesion de YouTube del usuario, para cuando YouTube pide "confirmar que no
+    eres un bot". `cookies`: archivo cookies.txt (formato Netscape).
+    `navegador`: firefox, chrome, edge, brave, safari... (en Windows solo
+    Firefox: Chrome, Edge y Brave cifran o bloquean sus cookies)."""
+
+    cookies: Path | None = None
+    navegador: str | None = None
+
+    @property
+    def activa(self) -> bool:
+        return self.cookies is not None or bool(self.navegador)
+
+
+# Probado el 2026-10-16: los clientes alternativos de yt-dlp (tv, web_safari,
+# mweb) fallaban incluso sin bloqueo, asi que solo se reintenta el normal.
+REINTENTOS_BLOQUEO = 1
+ESPERA_REINTENTO_S = 5.0
+
+AYUDA_BLOQUEO = (
+    "YouTube pide confirmar que no eres un bot y bloquea la descarga desde esta conexion. "
+    "Suele ser temporal (pasa tras muchas descargas seguidas). Soluciones: "
+    "1) espera un rato y vuelve a intentarlo; "
+    "2) en Ajustes > YouTube, da tu sesion de YouTube (archivo cookies.txt, o el navegador); "
+    "3) procesa la cancion desde un archivo de audio (pestana \"Archivo local\")."
+)
+
+
+def es_bloqueo_bot(error: Exception | str) -> bool:
+    texto = str(error).lower()
+    return "not a bot" in texto or "sign in to confirm" in texto
+
+
+def opciones_base(js: dict, sesion: SesionYoutube) -> dict:
+    opciones: dict = {
+        "quiet": True, "no_warnings": True, "noplaylist": True, "js_runtimes": js,
+        # Solo audio, tambien al leer los datos: un cliente sin video no falla por eso.
+        "format": "bestaudio/best",
+    }
+    if sesion.cookies is not None:
+        opciones["cookiefile"] = str(sesion.cookies)
+    elif sesion.navegador:
+        opciones["cookiesfrombrowser"] = (sesion.navegador,)
+    return opciones
+
+
+def _error_de_sesion(e: Exception, sesion: SesionYoutube) -> str | None:
+    """Mensaje en espanol si el fallo es leer la sesion (cookies) y no el video."""
+    texto = str(e)
+    # El aviso de bloqueo tambien dice "--cookies": no es un fallo de la sesion.
+    if es_bloqueo_bot(texto):
+        return None
+    if sesion.navegador and ("cookie" in texto.lower() or "dpapi" in texto.lower()):
+        return (f"No se pudo leer la sesion de YouTube de {sesion.navegador}: {texto}. "
+                "En Windows, Chrome, Edge y Brave no dejan leer sus cookies; usa Firefox o un archivo "
+                "cookies.txt (Ajustes > YouTube).")
+    if sesion.cookies is not None and not sesion.cookies.is_file():
+        return f"No se encontro el archivo de cookies {sesion.cookies}. Revisalo en Ajustes > YouTube."
+    return None
+
+
+def descargar(url: str, carpeta: Path, sesion: SesionYoutube | None = None) -> Metadatos:
     import yt_dlp
 
+    sesion = sesion or SesionYoutube()
     vid = id_youtube(url)
     destino = carpeta / "original.wav"
     url_limpia = f"https://www.youtube.com/watch?v={vid}"
 
-    etapa("descarga", 0.0, "Leyendo datos del video")
+    etapa("descarga", 0.0, "Leyendo datos del video" + (" (con tu sesion de YouTube)" if sesion.activa else ""))
     js = runtimes_js()
-    opciones_info = {"quiet": True, "no_warnings": True, "noplaylist": True, "skip_download": True, "js_runtimes": js}
-    try:
-        with yt_dlp.YoutubeDL(opciones_info) as ydl:
-            info = ydl.extract_info(url_limpia, download=False)
-    except Exception as e:  # yt-dlp lanza DownloadError y otros
-        raise ErrorFabrica("descarga", f"No se pudo leer el video: {e}") from e
+    info = None
+    ultimo: Exception | None = None
+    for intento in range(REINTENTOS_BLOQUEO + 1):
+        try:
+            with yt_dlp.YoutubeDL({**opciones_base(js, sesion), "skip_download": True}) as ydl:
+                info = ydl.extract_info(url_limpia, download=False)
+            break
+        except Exception as e:  # yt-dlp lanza DownloadError y otros
+            ultimo = e
+            mensaje_sesion = _error_de_sesion(e, sesion)
+            if mensaje_sesion:
+                raise ErrorFabrica("descarga", mensaje_sesion) from e
+            if not es_bloqueo_bot(e):
+                raise ErrorFabrica("descarga", f"No se pudo leer el video: {e}") from e
+            if intento < REINTENTOS_BLOQUEO:
+                aviso("YouTube pidio confirmar que no eres un bot; reintentando en unos segundos.")
+                import time
+
+                time.sleep(ESPERA_REINTENTO_S)
+    if info is None:
+        if sesion.activa:
+            raise ErrorFabrica("descarga", "YouTube sigue bloqueando la descarga aun con tu sesion. "
+                               "Comprueba que la sesion es reciente (vuelve a exportar cookies.txt con YouTube "
+                               "abierto y la sesion iniciada) o procesa la cancion desde un archivo de audio.") from ultimo
+        raise ErrorFabrica("descarga", AYUDA_BLOQUEO) from ultimo
 
     duracion = float(info.get("duration") or 0)
     if duracion > DURACION_MAXIMA:
@@ -118,15 +200,13 @@ def descargar(url: str, carpeta: Path) -> Metadatos:
                 etapa("descarga", 0.05 + 0.85 * d.get("downloaded_bytes", 0) / total, "Descargando audio")
 
     plantilla = str(carpeta / "descarga.%(ext)s")
-    opciones = {
-        "quiet": True, "no_warnings": True, "noplaylist": True,
-        "format": "bestaudio/best", "outtmpl": plantilla, "progress_hooks": [progreso],
-        "js_runtimes": js,
-    }
+    opciones = {**opciones_base(js, sesion), "outtmpl": plantilla, "progress_hooks": [progreso]}
     try:
         with yt_dlp.YoutubeDL(opciones) as ydl:
             ydl.download([url_limpia])
     except Exception as e:
+        if es_bloqueo_bot(e):
+            raise ErrorFabrica("descarga", AYUDA_BLOQUEO) from e
         raise ErrorFabrica("descarga", f"No se pudo descargar el audio: {e}") from e
 
     bajados = [p for p in carpeta.glob("descarga.*") if p.suffix not in (".part", ".ytdl")]
@@ -138,6 +218,14 @@ def descargar(url: str, carpeta: Path) -> Metadatos:
         p.unlink(missing_ok=True)
     etapa("descarga", 1.0, "Audio descargado")
     return meta
+
+
+def artista_y_titulo_de_nombre(nombre: str) -> tuple[str, str]:
+    """"Campo De Almas - Cosmica" -> ("Campo De Almas", "Cosmica"). Sin " - ": ("", nombre)."""
+    if " - " in nombre:
+        a, t = nombre.split(" - ", 1)
+        return a.strip(), t.strip()
+    return "", nombre.strip()
 
 
 def importar_local(archivo: Path, carpeta: Path, titulo: str, artista: str) -> Metadatos:

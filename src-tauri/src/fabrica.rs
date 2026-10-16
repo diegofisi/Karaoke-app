@@ -116,7 +116,19 @@ pub fn id_de_peticion(p: &PeticionProceso) -> Result<String, String> {
 }
 
 /// Argumentos de `python -m karaoke_fabrica procesar ...`.
-pub fn argumentos(p: &PeticionProceso, salida: &Path, letra: Option<&Path>) -> Vec<String> {
+/// Sesion de YouTube de Ajustes, para cuando YouTube pide confirmar que no eres un bot.
+#[derive(Debug, Clone, Default)]
+pub struct SesionYoutube {
+    pub cookies: Option<String>,
+    pub navegador: Option<String>,
+}
+
+pub fn argumentos(
+    p: &PeticionProceso,
+    salida: &Path,
+    letra: Option<&Path>,
+    sesion: &SesionYoutube,
+) -> Vec<String> {
     let mut a = vec!["-m".into(), "karaoke_fabrica".into(), "procesar".into()];
     if let Some(url) = p.url.as_deref().filter(|u| !u.trim().is_empty()) {
         a.extend(["--url".into(), url.trim().into()]);
@@ -135,6 +147,11 @@ pub fn argumentos(p: &PeticionProceso, salida: &Path, letra: Option<&Path>) -> V
     }
     if let Some(l) = letra {
         a.extend(["--letra".into(), l.display().to_string()]);
+    }
+    if let Some(c) = &sesion.cookies {
+        a.extend(["--cookies".into(), c.clone()]);
+    } else if let Some(n) = &sesion.navegador {
+        a.extend(["--navegador".into(), n.clone()]);
     }
     a
 }
@@ -186,7 +203,12 @@ pub fn matar(pid: u32) {
 }
 
 /// Arranca la fabrica. Devuelve el proceso con su stdout entubado.
-pub fn arrancar(p: &PeticionProceso, carpeta: &Path, u: &Ubicacion) -> Result<Child, String> {
+pub fn arrancar(
+    p: &PeticionProceso,
+    carpeta: &Path,
+    u: &Ubicacion,
+    sesion: &SesionYoutube,
+) -> Result<Child, String> {
     fs::create_dir_all(carpeta)
         .map_err(|e| format!("No se pudo crear la carpeta de la cancion: {e}"))?;
     let letra = match p.letra.as_deref().filter(|l| !l.trim().is_empty()) {
@@ -200,7 +222,7 @@ pub fn arrancar(p: &PeticionProceso, carpeta: &Path, u: &Ubicacion) -> Result<Ch
     let errores = File::create(carpeta.join("fabrica.stderr.log"))
         .map_err(|e| format!("No se pudo crear el registro de la fabrica: {e}"))?;
     comando_python(u)
-        .args(argumentos(p, carpeta, letra.as_deref()))
+        .args(argumentos(p, carpeta, letra.as_deref(), sesion))
         .stdout(Stdio::piped())
         .stderr(Stdio::from(errores))
         .spawn()
@@ -345,7 +367,12 @@ mod pruebas {
         p.url = Some(" https://youtu.be/dQw4w9WgXcQ ".into());
         p.idioma = Some("es".into());
         p.titulo = Some("  ".into());
-        let a = argumentos(&p, Path::new("salida"), Some(Path::new("letra.txt")));
+        let a = argumentos(
+            &p,
+            Path::new("salida"),
+            Some(Path::new("letra.txt")),
+            &SesionYoutube::default(),
+        );
         assert_eq!(
             a,
             [

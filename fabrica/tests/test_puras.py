@@ -248,3 +248,39 @@ def test_letra_que_empieza_por_palabra_de_seccion_se_conserva(linea):
 @pytest.mark.parametrize("linea", ["[Chorus]", "(Verso 2)", "Coro:", "Chorus 2", "[Hook: Artista]", "{Bridge}", "Pre-Chorus"])
 def test_cabeceras_de_seccion_se_quitan(linea):
     assert limpiar_lineas([LineaFuente(linea, None)]) == []
+
+
+# --- descarga: bloqueo de YouTube y sesion ----------------------------------------------
+
+from pathlib import Path  # noqa: E402
+
+from karaoke_fabrica.descarga import SesionYoutube, es_bloqueo_bot, opciones_base  # noqa: E402
+
+
+def test_detecta_el_bloqueo_de_bot():
+    assert es_bloqueo_bot("ERROR: [youtube] x: Sign in to confirm you're not a bot. Use --cookies")
+    assert not es_bloqueo_bot("ERROR: Video unavailable")
+
+
+def test_opciones_con_cookies_y_cliente():
+    o = opciones_base({}, SesionYoutube(cookies=Path("c.txt")))
+    assert o["cookiefile"] == "c.txt" and o["format"] == "bestaudio/best"
+    o = opciones_base({}, SesionYoutube(navegador="firefox"))
+    assert o["cookiesfrombrowser"] == ("firefox",) and "cookiefile" not in o
+
+
+from karaoke_fabrica.descarga import artista_y_titulo_de_nombre  # noqa: E402
+
+
+def test_artista_y_titulo_del_nombre_del_archivo():
+    assert artista_y_titulo_de_nombre("Campo De Almas - Cósmica") == ("Campo De Almas", "Cósmica")
+    assert artista_y_titulo_de_nombre("solo titulo") == ("", "solo titulo")
+
+
+def test_bloqueo_con_navegador_no_se_confunde_con_fallo_de_cookies():
+    from karaoke_fabrica.descarga import _error_de_sesion
+
+    bloqueo = Exception("ERROR: [youtube] x: Sign in to confirm you're not a bot. Use --cookies-from-browser or --cookies")
+    assert _error_de_sesion(bloqueo, SesionYoutube(navegador="firefox")) is None
+    dpapi = Exception("ERROR: Failed to decrypt with DPAPI")
+    assert "Firefox" in _error_de_sesion(dpapi, SesionYoutube(navegador="chrome"))

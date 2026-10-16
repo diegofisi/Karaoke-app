@@ -162,13 +162,19 @@ def _desde_registro(reg: dict) -> Letra | None:
 
 def buscar_lrclib(artista: str, titulo: str, duracion: float) -> Letra | None:
     titulo_l = limpiar_titulo(titulo)
+    # /get exige artista: sin el (archivo local sin " - " en el nombre) da 400.
+    # Un fallo de /get no impide probar /search (visto el 2026-10-16).
+    if artista.strip():
+        try:
+            reg = _pedir("get", {"artist_name": artista, "track_name": titulo_l, "duration": round(duracion)})
+            if isinstance(reg, dict):
+                letra = _desde_registro(reg)
+                if letra:
+                    log.info("LRCLIB get: %s - %s", reg.get("artistName"), reg.get("trackName"))
+                    return letra
+        except Exception as e:  # sigue con la busqueda general
+            log.warning("LRCLIB get fallo (%s); se prueba la busqueda", e)
     try:
-        reg = _pedir("get", {"artist_name": artista, "track_name": titulo_l, "duration": round(duracion)})
-        if isinstance(reg, dict):
-            letra = _desde_registro(reg)
-            if letra:
-                log.info("LRCLIB get: %s - %s", reg.get("artistName"), reg.get("trackName"))
-                return letra
         candidatos = _pedir("search", {"q": f"{artista} {titulo_l}".strip()}) or []
         if not candidatos:
             candidatos = _pedir("search", {"track_name": titulo_l}) or []

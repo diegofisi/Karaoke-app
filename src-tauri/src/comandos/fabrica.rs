@@ -216,7 +216,14 @@ pub fn procesar_cancion(
             return Err(e);
         }
     };
-    let hijo = match fabrica::arrancar(&peticion, &carpeta, &u) {
+    let sesion = {
+        let a = candado(&estado.ajustes)?;
+        fabrica::SesionYoutube {
+            cookies: a.youtube_cookies.clone(),
+            navegador: a.youtube_navegador.clone(),
+        }
+    };
+    let hijo = match fabrica::arrancar(&peticion, &carpeta, &u, &sesion) {
         Ok(h) => h,
         Err(e) => {
             quitar_trabajo(&estado, &id);

@@ -27,6 +27,12 @@ pub struct Ajustes {
     /// Carpeta de la fabrica Python (la del repositorio o `fabrica/`).
     /// `None` = la del repositorio donde se compilo la app (desarrollo).
     pub carpeta_fabrica: Option<String>,
+    /// Archivo cookies.txt con la sesion de YouTube (si YouTube pide confirmar
+    /// que no eres un bot). Tiene prioridad sobre `youtube_navegador`.
+    pub youtube_cookies: Option<String>,
+    /// Navegador del que leer la sesion de YouTube (firefox, chrome, edge,
+    /// brave, safari). En Windows solo funciona Firefox.
+    pub youtube_navegador: Option<String>,
 }
 
 impl Default for Ajustes {
@@ -41,6 +47,8 @@ impl Default for Ajustes {
             mostrar_romaji: true,
             grabar: false,
             carpeta_fabrica: None,
+            youtube_cookies: None,
+            youtube_navegador: None,
         }
     }
 }
@@ -73,12 +81,14 @@ impl Ajustes {
         {
             self.microfono = None;
         }
-        if self
-            .carpeta_fabrica
-            .as_deref()
-            .is_some_and(|c| c.trim().is_empty())
-        {
-            self.carpeta_fabrica = None;
+        for campo in [
+            &mut self.carpeta_fabrica,
+            &mut self.youtube_cookies,
+            &mut self.youtube_navegador,
+        ] {
+            if campo.as_deref().is_some_and(|c| c.trim().is_empty()) {
+                *campo = None;
+            }
         }
         self
     }
