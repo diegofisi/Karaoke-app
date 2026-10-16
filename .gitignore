@@ -40,5 +40,21 @@ desktop.ini
 *.pth
 *.bin
 
-# Claude
-.claude/
+# Rust / Tauri
+target/
+src-tauri/target/
+
+# Fabrica y medida
+fabrica/.venv/
+fabrica/**/__pycache__/
+eval/datos/
+
+# Build
+dist/
+*.tsbuildinfo
+
+# Claude: .claude/ se versiona salvo la configuracion local
+.claude/settings.local.json
+
+# Datos de desarrollo (canciones procesadas)
+.datos-dev/

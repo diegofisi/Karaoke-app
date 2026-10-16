@@ -1,0 +1,12 @@
+[package]
+name = "tono"
+description = "Detector de tono MPM del microfono (DSP puro, sin E/S de audio)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+pitch-detection.workspace = true
+
+[lints]
+workspace = true

@@ -1,0 +1,40 @@
+[workspace]
+resolver = "3"
+members = ["crates/*", "src-tauri"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+license = "UNLICENSED"
+
+[workspace.dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+pitch-detection = "0.3"
+cpal = "0.17"
+rtrb = "0.3"
+hound = "3.5"
+rubato = "4"
+tempfile = "3"
+tauri = { version = "2", features = [] }
+tauri-build = { version = "2", features = [] }
+tauri-plugin-dialog = "2"
+tauri-plugin-opener = "2"
+regex = "1"
+sha1_smol = "1"
+
+# Crates internos
+karaoke-core = { path = "crates/karaoke-core" }
+tono = { path = "crates/tono" }
+puntuacion = { path = "crates/puntuacion" }
+audio = { path = "crates/audio" }
+biblioteca = { path = "crates/biblioteca" }
+
+# Cada crate los aplica con `[lints] workspace = true`. Los tests los permiten
+# con `#![cfg_attr(test, allow(...))]` en la raiz del crate y en cada test de
+# integracion.
+[workspace.lints.clippy]
+unwrap_used = "deny"
+expect_used = "deny"
+panic = "deny"

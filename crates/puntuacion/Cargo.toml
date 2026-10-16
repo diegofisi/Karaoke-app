@@ -1,0 +1,13 @@
+[package]
+name = "puntuacion"
+description = "Puntuacion por nota y por linea (pura)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+karaoke-core.workspace = true
+serde.workspace = true
+
+[lints]
+workspace = true

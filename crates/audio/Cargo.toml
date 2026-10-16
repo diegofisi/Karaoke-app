@@ -1,0 +1,25 @@
+[package]
+name = "audio"
+description = "cpal: reproduccion con reloj por muestras, microfono en bruto y calibracion de latencia"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+cpal.workspace = true
+rtrb.workspace = true
+hound.workspace = true
+rubato.workspace = true
+serde.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true
+tempfile.workspace = true
+
+[[example]]
+name = "prueba_audio"
+path = "examples/prueba_audio.rs"
+
+[lints]
+workspace = true

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <!-- macOS pide permiso para el microfono; sin esta clave la captura falla sin aviso. -->
+  <key>NSMicrophoneUsageDescription</key>
+  <string>El karaoke escucha tu voz para mostrar y puntuar tu tono.</string>
+</dict>
+</plist>

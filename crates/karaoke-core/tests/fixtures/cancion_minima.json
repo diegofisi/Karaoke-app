@@ -1,0 +1,70 @@
+{
+ "version": 1,
+ "id": "yt-abc123XYZ_-",
+ "titulo": "Cancion de prueba",
+ "artista": "Artista de prueba",
+ "duracion": 12.5,
+ "idioma": "ja",
+ "origen": {
+  "youtube_id": "abc123XYZ_-",
+  "letra": "lrclib",
+  "separador": "vocals_mel_band_roformer.ckpt",
+  "alineador": "Qwen/Qwen3-ForcedAligner-0.6B",
+  "tono": "swift-f0",
+  "fabrica_version": "0.1.0",
+  "creada": "2026-10-15T18:30:00Z"
+ },
+ "lineas": [
+  {
+   "inicio": 1.0,
+   "fin": 3.5,
+   "texto": "こんにちは 世界",
+   "romaji": "konnichiwa sekai",
+   "confianza": 0.93,
+   "metodo": "alineada",
+   "palabras": [
+    {
+     "texto": "こんにちは",
+     "lectura": "こんにちは",
+     "inicio": 1.0,
+     "fin": 2.0,
+     "notas": [
+      {"inicio": 1.0, "fin": 1.5, "midi": 64.1, "tipo": "normal"},
+      {"inicio": 1.5, "fin": 2.0, "midi": 66.0, "tipo": "dorada"}
+     ]
+    },
+    {
+     "texto": "世界",
+     "lectura": "せかい",
+     "inicio": 2.1,
+     "fin": 3.5,
+     "notas": [
+      {"inicio": 2.1, "fin": 3.5, "midi": 62.35, "tipo": "libre"}
+     ]
+    }
+   ]
+  },
+  {
+   "inicio": 4.0,
+   "fin": 6.0,
+   "texto": "hablado",
+   "romaji": null,
+   "confianza": 0.2,
+   "metodo": "respaldo",
+   "palabras": [
+    {
+     "texto": "hablado",
+     "lectura": null,
+     "inicio": 4.0,
+     "fin": 6.0,
+     "notas": []
+    }
+   ]
+  }
+ ],
+ "tono": {
+  "inicio": 0.0,
+  "paso": 0.016,
+  "midi": [null, null, 64.08, 64.12, null, 66.0]
+ }
+}

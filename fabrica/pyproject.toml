@@ -1,0 +1,30 @@
+[project]
+name = "karaoke-fabrica"
+version = "0.1.0"
+description = "Fabrica del karaoke: descarga, separa, alinea la letra y saca el tono de referencia"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    # torch y torchaudio se instalan ANTES y aparte (ver README.md):
+    # Windows con NVIDIA desde el indice cu130; Mac desde PyPI (trae MPS).
+    "qwen-asr",
+    "swift-f0[audio]",
+    # [gpu] trae onnxruntime-gpu, que no existe en Mac.
+    "audio-separator[gpu]; sys_platform == 'win32' or sys_platform == 'linux'",
+    "audio-separator; sys_platform == 'darwin'",
+    "audioread",
+    "yt-dlp",
+    "requests",
+    "soundfile",
+    "numpy",
+    "scipy",
+    "fugashi",
+    "unidic-lite",
+    "cutlet",
+    "hf_xet",
+]
+
+[project.optional-dependencies]
+dev = ["pytest"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
