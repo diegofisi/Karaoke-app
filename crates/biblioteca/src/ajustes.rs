@@ -24,6 +24,9 @@ pub struct Ajustes {
     pub mostrar_romaji: bool,
     /// Grabar la voz durante la partida y guardarla mezclada con la musica.
     pub grabar: bool,
+    /// Carpeta de la fabrica Python (la del repositorio o `fabrica/`).
+    /// `None` = la del repositorio donde se compilo la app (desarrollo).
+    pub carpeta_fabrica: Option<String>,
 }
 
 impl Default for Ajustes {
@@ -37,6 +40,7 @@ impl Default for Ajustes {
             volumen_voz: 1.0,
             mostrar_romaji: true,
             grabar: false,
+            carpeta_fabrica: None,
         }
     }
 }
@@ -68,6 +72,13 @@ impl Ajustes {
             .is_some_and(|m| m.trim().is_empty())
         {
             self.microfono = None;
+        }
+        if self
+            .carpeta_fabrica
+            .as_deref()
+            .is_some_and(|c| c.trim().is_empty())
+        {
+            self.carpeta_fabrica = None;
         }
         self
     }

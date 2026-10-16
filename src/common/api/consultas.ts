@@ -114,6 +114,8 @@ export const useGuardarAjustes = () => {
     onSuccess: (guardados) => {
       cliente.setQueryData(CLAVES.ajustes, guardados);
       void cliente.invalidateQueries({ queryKey: CLAVES.ajustes });
+      // Con otra carpeta de fábrica, Rust vuelve a hacer el diagnóstico.
+      void cliente.invalidateQueries({ queryKey: CLAVES.estadoFabrica });
     },
   });
 };

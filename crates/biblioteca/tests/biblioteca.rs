@@ -252,6 +252,7 @@ fn ajustes_por_defecto_sin_archivo_o_corrupto() {
         volumen_voz: 1.0,
         mostrar_romaji: true,
         grabar: false,
+        carpeta_fabrica: None,
     };
     assert_eq!(Ajustes::default(), defecto);
     assert_eq!(b.leer_ajustes(), defecto);
@@ -286,6 +287,7 @@ fn ajustes_ida_y_vuelta() {
         volumen_voz: 1.5,
         mostrar_romaji: false,
         grabar: false,
+        carpeta_fabrica: Some("/Users/yo/Karaoke".to_string()),
     };
     assert_eq!(b.guardar_ajustes(&a).unwrap(), a);
     assert_eq!(b.leer_ajustes(), a);

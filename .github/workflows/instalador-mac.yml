@@ -1,0 +1,47 @@
+# Compila el instalador de macOS (.dmg) en una Mac de GitHub y lo sube a la
+# release. Tauri no puede compilar para macOS desde Windows.
+# Lanzar a mano: gh workflow run instalador-mac.yml -f version=v0.1.0
+name: Instalador de macOS
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Tag de la release donde subir el .dmg"
+        required: true
+        default: "v0.1.0"
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  mac:
+    runs-on: macos-14 # Apple Silicon
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Dependencias de la interfaz
+        run: npm ci
+
+      - name: Compilar la app y el .dmg
+        run: npm run tauri build -- --bundles dmg
+
+      - name: Subir el .dmg a la release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.release.tag_name || inputs.version }}
+        run: |
+          DMG=$(ls target/release/bundle/dmg/*.dmg | head -n 1)
+          echo "Subiendo $DMG a $TAG"
+          gh release upload "$TAG" "$DMG" --clobber --repo "$GITHUB_REPOSITORY"

@@ -32,7 +32,11 @@ pub fn guardar_ajustes(estado: State<'_, Estado>, ajustes: Ajustes) -> Result<Aj
         .biblioteca
         .guardar_ajustes(&ajustes)
         .map_err(|e| e.to_string())?;
-    *candado(&estado.ajustes)? = guardados.clone();
+    let anterior = std::mem::replace(&mut *candado(&estado.ajustes)?, guardados.clone());
+    if anterior.carpeta_fabrica != guardados.carpeta_fabrica {
+        // Otra carpeta de fabrica: el diagnostico guardado ya no vale.
+        *candado(&estado.diagnostico)? = None;
+    }
     Ok(guardados)
 }
 

@@ -14,13 +14,13 @@ use serde_json::{Value, json};
 
 use crate::tipos::{EstadoFabrica, PeticionProceso};
 
-/// Python del venv de la fabrica. En desarrollo: `<repo>/fabrica/.venv`.
-/// `KARAOKE_PYTHON` lo sustituye. El empaquetado (fase 5) cambiara esto.
-pub fn ruta_python() -> PathBuf {
+/// Python del venv de la fabrica: `<fabrica>/.venv`. `KARAOKE_PYTHON` lo
+/// sustituye. El empaquetado (fase 5) cambiara esto.
+pub fn ruta_python(elegida: Option<&Path>) -> PathBuf {
     if let Some(ruta) = std::env::var_os("KARAOKE_PYTHON") {
         return PathBuf::from(ruta);
     }
-    let venv = carpeta_fabrica().join(".venv");
+    let venv = carpeta_fabrica(elegida).join(".venv");
     if cfg!(windows) {
         venv.join("Scripts").join("python.exe")
     } else {
@@ -28,10 +28,18 @@ pub fn ruta_python() -> PathBuf {
     }
 }
 
-pub fn carpeta_fabrica() -> PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("..")
-        .join("fabrica")
+/// Carpeta de la fabrica. `elegida` (Ajustes) puede ser la del repositorio o
+/// la propia `fabrica/`. Sin elegir: la del repositorio donde se compilo la
+/// app, que solo existe en el equipo de desarrollo (en un .dmg compilado en
+/// otra maquina hay que elegirla en Ajustes).
+pub fn carpeta_fabrica(elegida: Option<&Path>) -> PathBuf {
+    match elegida {
+        Some(c) if c.join("fabrica").join("karaoke_fabrica").is_dir() => c.join("fabrica"),
+        Some(c) => c.to_path_buf(),
+        None => Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("..")
+            .join("fabrica"),
+    }
 }
 
 fn regex_youtube() -> Option<&'static Regex> {
@@ -93,9 +101,9 @@ pub fn argumentos(p: &PeticionProceso, salida: &Path, letra: Option<&Path>) -> V
     a
 }
 
-fn comando_python() -> Command {
-    let mut c = Command::new(ruta_python());
-    c.current_dir(carpeta_fabrica())
+fn comando_python(fabrica: Option<&Path>) -> Command {
+    let mut c = Command::new(ruta_python(fabrica));
+    c.current_dir(carpeta_fabrica(fabrica))
         // stdout sin buffer y en UTF-8 (la consola de Windows no lo es por defecto).
         .env("PYTHONUNBUFFERED", "1")
         .env("PYTHONIOENCODING", "utf-8")
@@ -138,7 +146,11 @@ pub fn matar(pid: u32) {
 }
 
 /// Arranca la fabrica. Devuelve el proceso con su stdout entubado.
-pub fn arrancar(p: &PeticionProceso, carpeta: &Path) -> Result<Child, String> {
+pub fn arrancar(
+    p: &PeticionProceso,
+    carpeta: &Path,
+    fabrica: Option<&Path>,
+) -> Result<Child, String> {
     fs::create_dir_all(carpeta)
         .map_err(|e| format!("No se pudo crear la carpeta de la cancion: {e}"))?;
     let letra = match p.letra.as_deref().filter(|l| !l.trim().is_empty()) {
@@ -151,15 +163,15 @@ pub fn arrancar(p: &PeticionProceso, carpeta: &Path) -> Result<Child, String> {
     };
     let errores = File::create(carpeta.join("fabrica.stderr.log"))
         .map_err(|e| format!("No se pudo crear el registro de la fabrica: {e}"))?;
-    comando_python()
+    comando_python(fabrica)
         .args(argumentos(p, carpeta, letra.as_deref()))
         .stdout(Stdio::piped())
         .stderr(Stdio::from(errores))
         .spawn()
         .map_err(|e| {
             format!(
-                "No se pudo arrancar la fabrica ({}): {e}. Instala su entorno: fabrica/README.md",
-                ruta_python().display()
+                "No se pudo arrancar la fabrica ({}): {e}. Instala su entorno (fabrica/README.md) o elige su carpeta en Ajustes",
+                ruta_python(fabrica).display()
             )
         })
 }
@@ -201,8 +213,8 @@ pub fn reenviar(
 }
 
 /// `python -m karaoke_fabrica diagnostico`.
-pub fn diagnostico() -> EstadoFabrica {
-    let salida = comando_python()
+pub fn diagnostico(fabrica: Option<&Path>) -> EstadoFabrica {
+    let salida = comando_python(fabrica)
         .args(["-m", "karaoke_fabrica", "diagnostico"])
         .stderr(Stdio::null())
         .output();
@@ -217,8 +229,8 @@ pub fn diagnostico() -> EstadoFabrica {
         Ok(s) => s,
         Err(e) => {
             return sin_python(format!(
-                "No se encontro el Python de la fabrica en {} ({e}). Instala su entorno: fabrica/README.md",
-                ruta_python().display()
+                "No se encontro el Python de la fabrica en {} ({e}). Instala su entorno (fabrica/README.md) o elige su carpeta en Ajustes",
+                ruta_python(fabrica).display()
             ));
         }
     };

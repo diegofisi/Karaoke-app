@@ -1,4 +1,5 @@
 use std::collections::hash_map::Entry;
+use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
@@ -15,10 +16,15 @@ pub async fn estado_fabrica(estado: State<'_, Estado>) -> Result<EstadoFabrica, 
     if let Some(guardado) = candado(&estado.diagnostico)?.clone() {
         return Ok(guardado);
     }
+    let elegida = candado(&estado.ajustes)?
+        .carpeta_fabrica
+        .clone()
+        .map(PathBuf::from);
     // Arranca Python e importa torch: varios segundos, fuera del hilo principal.
-    let resultado = tauri::async_runtime::spawn_blocking(fabrica::diagnostico)
-        .await
-        .map_err(|e| format!("No se pudo consultar la fabrica: {e}"))?;
+    let resultado =
+        tauri::async_runtime::spawn_blocking(move || fabrica::diagnostico(elegida.as_deref()))
+            .await
+            .map_err(|e| format!("No se pudo consultar la fabrica: {e}"))?;
     if resultado.lista {
         *candado(&estado.diagnostico)? = Some(resultado.clone());
     }
@@ -53,7 +59,11 @@ pub fn procesar_cancion(
         }
     }
 
-    let hijo = match fabrica::arrancar(&peticion, &carpeta) {
+    let elegida = candado(&estado.ajustes)?
+        .carpeta_fabrica
+        .clone()
+        .map(PathBuf::from);
+    let hijo = match fabrica::arrancar(&peticion, &carpeta, elegida.as_deref()) {
         Ok(h) => h,
         Err(e) => {
             quitar_trabajo(&estado, &id);

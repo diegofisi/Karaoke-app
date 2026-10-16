@@ -165,9 +165,10 @@ Dificultad      = "facil" | "normal" | "dificil"
 Modo            = "practica" | "puntuacion"
 Ajustes         { microfono: string | null, latencia_ms: number, dificultad: Dificultad,
                   volumen_musica: number, volumen_guia: number, volumen_voz: number,
-                  mostrar_romaji: boolean, grabar: boolean }
+                  mostrar_romaji: boolean, grabar: boolean, carpeta_fabrica: string | null }
                   // volúmenes 0–1; volumen_guia 0 = sin voz guía. volumen_voz 0–3 (1 = automático).
-                  // Por defecto: null, 150, "normal", 0.9, 0, 1, true, false
+                  // carpeta_fabrica: la del repositorio o `fabrica/`; null = la de desarrollo.
+                  // Por defecto: null, 150, "normal", 0.9, 0, 1, true, false, null
 ResultadoCalibracion { latencia_ms: number, medidas_ms: number[], fiable: boolean }
 ResultadoJuego  { puntos: number, nivel: Nivel, mejor_combo: number, precision_media: number,
                   por_calificacion: { perfecta, bien, regular, fallo }, record_anterior: number | null, es_record: boolean }

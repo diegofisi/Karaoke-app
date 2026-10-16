@@ -14,6 +14,7 @@ import ToggleButton from "@mui/material/ToggleButton";
 import ToggleButtonGroup from "@mui/material/ToggleButtonGroup";
 import Typography from "@mui/material/Typography";
 import type { ReactNode } from "react";
+import { elegirCarpeta } from "@/common/api/dialogo";
 import { CabeceraPagina } from "@/common/components/CabeceraPagina";
 import { EstadoContenido } from "@/common/components/EstadoContenido";
 import { Dificultad, type Dificultad as TipoDificultad } from "@/common/interfaces";
@@ -119,6 +120,30 @@ export const AjustesPage = () => {
             control={<Switch checked={b.grabar} onChange={(e) => a.cambiar("grabar", e.target.checked)} />}
             label="Grabar mi voz en cada partida (se guarda en Música/Karaoke)"
           />
+        </Seccion>
+
+        <Seccion titulo="Fábrica">
+          <Typography variant="body2" sx={{ mb: 1 }}>
+            Carpeta del repositorio (o su carpeta <code>fabrica</code>) con el entorno de Python instalado.
+          </Typography>
+          <Typography variant="body2" sx={{ color: "text.secondary", mb: 1.5, wordBreak: "break-all" }}>
+            {b.carpeta_fabrica ?? "La de desarrollo (por defecto)"}
+          </Typography>
+          <Stack direction="row" spacing={1}>
+            <Button
+              variant="outlined"
+              onClick={() => {
+                void elegirCarpeta("Elige la carpeta del Karaoke o de su fábrica").then((c) => {
+                  if (c !== null) a.cambiar("carpeta_fabrica", c);
+                });
+              }}
+            >
+              Elegir carpeta…
+            </Button>
+            <Button onClick={() => a.cambiar("carpeta_fabrica", null)} disabled={b.carpeta_fabrica === null}>
+              Usar la de por defecto
+            </Button>
+          </Stack>
         </Seccion>
 
         <Seccion titulo="Volumen">

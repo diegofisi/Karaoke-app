@@ -22,6 +22,8 @@ export interface Ajustes {
   mostrar_romaji: boolean;
   /** Grabar la voz durante la partida y guardarla mezclada con la música. */
   grabar: boolean;
+  /** Carpeta de la fábrica (la del repositorio o `fabrica/`); `null` = la de desarrollo. */
+  carpeta_fabrica: string | null;
 }
 
 export interface ResultadoCalibracion {
