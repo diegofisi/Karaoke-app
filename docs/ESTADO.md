@@ -112,14 +112,19 @@ abre candidatos que antes estaban descartados, y cada uno se mide con `eval/`:
   una canción de YouTube con un PATH limpio (sin ffmpeg ni Node del sistema).
 - Sin probar en un Mac real.
 
-## Perfiles por equipo (2026-10-16, versión 0.2.1)
+## Memoria según el equipo (2026-10-16, versión 0.2.2)
 
-La app detecta la GPU y la memoria y elige sola (`fabrica/karaoke_fabrica/recursos.py`).
-Medido en las 10 canciones de validación (`--desde 5`), inicios a ≤100 ms:
+Sin perfiles fijos: antes de cargar cada modelo se mira la memoria LIBRE en
+ese momento (`fabrica/karaoke_fabrica/recursos.py`) y se compara con lo que
+necesita (medido en GPU, bfloat16): separador 2,0 GB, reconocedor 5,8 GB,
+alineador 1,9 GB, MMS 1,8 GB. Si cabe, a la GPU; si no, a la CPU (bfloat16:
+el reconocedor en float32 ocupaba 12 GB de RAM y colgaba equipos de 8-16 GB).
 
-| Perfil | Equipo | Separador | Reconocedor | Resultado |
-|---|---|---|---|---|
-| alto | NVIDIA ≥ 6 GB o Mac ≥ 16 GB | Mel-RoFormer | Qwen3-ASR 1,7B | 81,7 % |
-| medio | NVIDIA < 6 GB o Mac < 16 GB | Mel-RoFormer | 1,7B, liberado antes de alinear | (mismos modelos que alto) |
-| basico | sin GPU | Kim_Vocal_2 (ONNX) | 1,7B, todos los núcleos | 80,5 % |
-| descartado | — | Mel-RoFormer | Qwen3-ASR 0,6B | 67,1 % (español 43,5 %) |
+| Prueba | Resultado (inicios a ≤100 ms) |
+|---|---|
+| Validación, 10 canciones, todo en GPU | 81,7 % (igual que antes) |
+| GPU con 4 GB libres: reconocedor en CPU, resto en GPU (1 canción) | 86,5 % (igual que en GPU) |
+| Todo en CPU con bfloat16 (1 canción) | 86,5 % |
+| Sin GPU: separador Kim_Vocal_2 (validación) | 80,5 % |
+| Reconocedor 0,6B (descartado) | 67,1 % (español 43,5 %) |
+| Avance por grupos de 2 tramos (descartado) | 79,3 %: cambiaba los lotes; grupos de 8 = idéntico |

@@ -43,3 +43,10 @@ Las entradas del 2026-10-15 vienen de las dos versiones anteriores (rama
   está abierto): solo Firefox o el archivo. Los clientes alternativos (tv,
   web_safari, mweb) fallaban incluso sin bloqueo: no se usan — dónde:
   `fabrica/karaoke_fabrica/descarga.py`.
+- 2026-10-16 — En CPU, los modelos van en bfloat16: en float32 el
+  reconocedor ocupaba 12 GB de RAM y en equipos de 8-16 GB parecía colgado
+  (mismo resultado y velocidad en bf16). Dónde corre cada modelo lo decide la
+  memoria LIBRE al cargarlo (`recursos.py`), no el tipo de equipo.
+- 2026-10-16 — Al reconocer por grupos (para mostrar el avance), el grupo
+  debe tener el tamaño del lote interno del reconocedor (`LOTE_ASR`): con
+  grupos de 2 cambiaban los lotes y una canción bajó de 73,7 % a 39,7 %.

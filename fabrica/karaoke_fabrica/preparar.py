@@ -19,23 +19,24 @@ def _paso(paso: str, avance: float, mensaje: str) -> None:
 
 
 def preparar() -> None:
-    """Descarga solo los modelos del perfil de este equipo (recursos.py)."""
+    """Descarga todos los modelos, incluidos los dos separadores: cual se usa
+    depende de la memoria libre en cada momento (recursos.py)."""
     from huggingface_hub import snapshot_download
 
     from . import alineacion, separacion
-    from .recursos import ASR_GRANDE, detectar
+    from .recursos import ASR_GRANDE, SEPARADOR_LIGERO, SEPARADOR_PRECISO
 
-    perfil = detectar()
-    _paso("separador", 0.0, f"Perfil del equipo: {perfil.descripcion}. Descargando el separador de voz ({perfil.separador})")
     from audio_separator.separator import Separator
 
-    separador = Separator(output_dir=str(separacion.carpeta_modelos()), model_file_dir=str(separacion.carpeta_modelos()))
-    separador.load_model(model_filename=perfil.separador)
-    _paso("separador", 1.0, "Separador listo")
+    for i, modelo in enumerate((SEPARADOR_PRECISO, SEPARADOR_LIGERO)):
+        _paso("separador", i / 2, f"Descargando el separador de voz {modelo}")
+        separador = Separator(output_dir=str(separacion.carpeta_modelos()), model_file_dir=str(separacion.carpeta_modelos()))
+        separador.load_model(model_filename=modelo)
+        del separador
+    _paso("separador", 1.0, "Separadores listos")
 
-    tamano = "~4,4 GB" if perfil.asr == ASR_GRANDE else "~1,8 GB"
-    _paso("reconocedor", 0.0, f"Descargando {perfil.asr} ({tamano})")
-    snapshot_download(perfil.asr)
+    _paso("reconocedor", 0.0, f"Descargando {ASR_GRANDE} (~4,4 GB)")
+    snapshot_download(ASR_GRANDE)
     _paso("reconocedor", 1.0, "Reconocedor listo")
 
     _paso("alineador", 0.0, f"Descargando {alineacion.MODELO} (~1,8 GB)")

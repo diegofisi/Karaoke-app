@@ -33,7 +33,6 @@ from .modelo import Linea, Palabra
 from .texto import PalabraTexto, clave, palabras, romaji, texto_para_alinear
 
 MODELO = "Qwen/Qwen3-ForcedAligner-0.6B"
-MODELO_ASR_POR_DEFECTO = "Qwen/Qwen3-ASR-1.7B"  # el real lo elige recursos.detectar()
 IDIOMA_QWEN = {"es": "Spanish", "en": "English", "ja": "Japanese"}
 QWEN_A_IDIOMA = {v: k for k, v in IDIOMA_QWEN.items()}
 SR = 16000
@@ -48,7 +47,11 @@ ACUERDO = 0.35              # s: la alineacion fina y el ancla "coinciden" si di
 LOTE = 12                   # lineas por llamada al alineador
 TROZO_MINIMO = 15.0         # s, reconocimiento por trozos cortos
 TROZO_MAXIMO = 30.0
-TROZOS_POR_GRUPO = 2         # trozos por llamada al reconocedor (para informar del avance)
+LOTE_ASR = 8                 # tramos por lote dentro del reconocedor
+# Grupos del mismo tamano que el lote interno: asi los lotes son los mismos que
+# sin agrupar y el resultado no cambia (con grupos de 2 cambiaba: medido el
+# 2026-10-16, una cancion paso de 73,7 % a 39,7 %).
+TROZOS_POR_GRUPO = LOTE_ASR
 GRUPO_MAXIMO = 20.0         # s: lineas situadas se agrupan hasta este largo
 GRUPO_LIMITE = 40.0         # s: un tramo sin situar mas largo se parte
 USAR_MMS = True             # segunda opinion (MMS) para lo que Qwen no alinea
@@ -68,26 +71,13 @@ Intervalo = tuple[float, float]
 
 # --- modelos ---------------------------------------------------------------
 
-def _dispositivo():
-    """CUDA (Windows/Linux con NVIDIA) > MPS (Mac con Apple Silicon) > CPU.
-
-    En MPS se usa bfloat16, que exige macOS 14 o posterior; sin verificar en
-    Mac (esta maquina es Windows).
-    """
-    import torch
-
-    if torch.cuda.is_available():
-        return "cuda:0", torch.bfloat16
-    if getattr(torch.backends, "mps", None) is not None and torch.backends.mps.is_available():
-        return "mps", torch.bfloat16
-    return "cpu", torch.float32
-
-
 @lru_cache(maxsize=1)
 def _alineador():
     from qwen_asr import Qwen3ForcedAligner
 
-    disp, tipo = _dispositivo()
+    from .recursos import dispositivo_para
+
+    disp, tipo = dispositivo_para("alineador")
     log.info("Cargando %s en %s", MODELO, disp)
     return Qwen3ForcedAligner.from_pretrained(MODELO, dtype=tipo, device_map=disp)
 
@@ -96,33 +86,27 @@ def _alineador():
 def _asr():
     from qwen_asr import Qwen3ASRModel
 
-    disp, tipo = _dispositivo()
-    from .recursos import detectar
+    from .recursos import ASR_GRANDE, dispositivo_para
 
-    modelo_asr = detectar().asr
-    log.info("Cargando %s en %s (perfil %s)", modelo_asr, disp, detectar().nombre)
+    # Lleva su propio alineador dentro (para las marcas de tiempo): "reconocedor"
+    # en recursos.NECESITA_GB ya cuenta los dos.
+    disp, tipo = dispositivo_para("reconocedor")
+    log.info("Cargando %s en %s", ASR_GRANDE, disp)
     if disp == "cpu":
-        aviso("Sin GPU: reconocer la voz puede tardar varios minutos por cancion. La barra avanza por partes.")
+        aviso("El reconocedor va en la CPU: reconocer la voz puede tardar varios minutos. La barra avanza por partes.")
     return Qwen3ASRModel.from_pretrained(
-        modelo_asr, dtype=tipo, device_map=disp, max_inference_batch_size=8, max_new_tokens=1024,
+        ASR_GRANDE, dtype=tipo, device_map=disp, max_inference_batch_size=LOTE_ASR, max_new_tokens=1024,
         forced_aligner=MODELO, forced_aligner_kwargs=dict(dtype=tipo, device_map=disp),
     )
 
 
-def _liberar_asr_si_falta_memoria() -> None:
-    """Perfil medio (poca VRAM): el reconocedor sale de memoria antes de alinear."""
-    from .recursos import detectar
-
-    if detectar().nombre != "medio":
-        return
-    import gc
-
-    import torch
+def soltar_reconocedor() -> None:
+    """Tras reconocer la voz ya no hace falta: se suelta para dejar sitio al
+    alineador y a MMS (en una GPU justa, si no, irian a la CPU)."""
+    from .recursos import liberar_gpu
 
     _asr.cache_clear()
-    gc.collect()
-    if torch.cuda.is_available():
-        torch.cuda.empty_cache()
+    liberar_gpu()
 
 
 def liberar_modelos() -> None:
@@ -583,7 +567,7 @@ def alinear(letra: Letra, audio: np.ndarray, idioma: str, duracion: float,
         etapa("alineacion", 0.05, "Reconociendo la voz para situar cada linea")
         _, unidades_asr = transcribir(audio, idioma, lambda x: etapa(
             "alineacion", 0.05 + 0.25 * x, f"Reconociendo la voz ({round(x * 100)} %)"))
-    _liberar_asr_si_falta_memoria()
+    soltar_reconocedor()
 
     etapa("alineacion", 0.3, "Emparejando la letra con lo reconocido")
     anclas_planas = anclar(planas, unidades_asr, idioma)

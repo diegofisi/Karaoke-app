@@ -1,0 +1,43 @@
+{
+ "fecha": "2026-10-16T13:58:04",
+ "alinear_sobre": "voz",
+ "total": {
+  "es": {
+   "palabras": 194,
+   "mae_inicio_ms": 15163.1,
+   "mediana_inicio_ms": 571.5,
+   "dentro_50ms": 21.6,
+   "dentro_100ms": 39.7,
+   "dentro_300ms": 46.4,
+   "mae_fin_ms": 15282.1,
+   "sesgo_inicio_ms": 295.4
+  },
+  "todos": {
+   "palabras": 194,
+   "mae_inicio_ms": 15163.1,
+   "mediana_inicio_ms": 571.5,
+   "dentro_50ms": 21.6,
+   "dentro_100ms": 39.7,
+   "dentro_300ms": 46.4,
+   "mae_fin_ms": 15282.1,
+   "sesgo_inicio_ms": 295.4
+  }
+ },
+ "canciones": [
+  {
+   "cancion": "10._Disparan_-_criatura",
+   "idioma": "es",
+   "segundos": 73.0,
+   "emparejadas": "194/194",
+   "lineas_respaldo": "10/40",
+   "palabras": 194,
+   "mae_inicio_ms": 15163.1,
+   "mediana_inicio_ms": 571.5,
+   "dentro_50ms": 21.6,
+   "dentro_100ms": 39.7,
+   "dentro_300ms": 46.4,
+   "mae_fin_ms": 15282.1,
+   "sesgo_inicio_ms": 295.4
+  }
+ ]
+}

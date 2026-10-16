@@ -13,7 +13,7 @@ from pathlib import Path
 
 from .eventos import ErrorFabrica, etapa, log
 
-MODELO_POR_DEFECTO = "vocals_mel_band_roformer.ckpt"  # el real lo elige recursos.detectar()
+MODELO_POR_DEFECTO = "vocals_mel_band_roformer.ckpt"  # el real lo elige recursos.separador_para_ahora()
 
 
 def carpeta_modelos() -> Path:
@@ -51,6 +51,10 @@ def separar(original: Path, carpeta: Path, modelo: str = MODELO_POR_DEFECTO) -> 
 
     buscar("vocals").replace(voz)
     buscar("instrumental", "other", "no_vocals").replace(instrumental)
+    del sep
+    from .recursos import liberar_gpu
+
+    liberar_gpu()  # deja la GPU libre para el reconocedor
     for s in tmp.iterdir():
         s.unlink()
     tmp.rmdir()

@@ -29,6 +29,12 @@ def preparar_salida(carpeta_log: Path | None) -> None:
     """
     global _salida
     _salida = sys.stdout
+    # Siempre UTF-8: la consola de Windows (cp1252) no puede con "→", tildes de
+    # otros idiomas ni japones, y un error al emitir tumbaria la fabrica.
+    try:
+        _salida.reconfigure(encoding="utf-8")  # type: ignore[attr-defined]
+    except (AttributeError, ValueError):
+        pass
     sys.stdout = sys.stderr
 
     manejadores: list[logging.Handler] = [logging.StreamHandler(sys.stderr)]

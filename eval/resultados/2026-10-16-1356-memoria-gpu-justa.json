@@ -1,0 +1,43 @@
+{
+ "fecha": "2026-10-16T13:56:25",
+ "alinear_sobre": "voz",
+ "total": {
+  "es": {
+   "palabras": 282,
+   "mae_inicio_ms": 60.6,
+   "mediana_inicio_ms": 50.9,
+   "dentro_50ms": 48.9,
+   "dentro_100ms": 86.5,
+   "dentro_300ms": 98.6,
+   "mae_fin_ms": 52.6,
+   "sesgo_inicio_ms": -42.3
+  },
+  "todos": {
+   "palabras": 282,
+   "mae_inicio_ms": 60.6,
+   "mediana_inicio_ms": 50.9,
+   "dentro_50ms": 48.9,
+   "dentro_100ms": 86.5,
+   "dentro_300ms": 98.6,
+   "mae_fin_ms": 52.6,
+   "sesgo_inicio_ms": -42.3
+  }
+ },
+ "canciones": [
+  {
+   "cancion": "Baila_-_Alfonso_Lugo",
+   "idioma": "es",
+   "segundos": 103.2,
+   "emparejadas": "282/282",
+   "lineas_respaldo": "0/36",
+   "palabras": 282,
+   "mae_inicio_ms": 60.6,
+   "mediana_inicio_ms": 50.9,
+   "dentro_50ms": 48.9,
+   "dentro_100ms": 86.5,
+   "dentro_300ms": 98.6,
+   "mae_fin_ms": 52.6,
+   "sesgo_inicio_ms": -42.3
+  }
+ ]
+}

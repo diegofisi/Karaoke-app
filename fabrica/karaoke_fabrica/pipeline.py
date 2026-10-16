@@ -30,7 +30,7 @@ class Peticion:
     artista: str | None = None
     idioma: str | None = None
     letra: Path | None = None
-    separador: str | None = None  # None = el del perfil del equipo (recursos.py)
+    separador: str | None = None  # None = el que quepa ahora (recursos.separador_para_ahora)
     alinear_sobre: str = "voz"  # "voz" | "mezcla"
     cookies: Path | None = None
     navegador: str | None = None
@@ -84,7 +84,7 @@ def procesar(p: Peticion) -> tuple[str, Path]:
         meta.artista = p.artista
     original = p.salida / "original.wav"
 
-    separador = p.separador or recursos.detectar().separador
+    separador = p.separador or recursos.separador_para_ahora()
     voz, _ = separacion.separar(original, p.salida, separador)
 
     letra = mod_letra.obtener(meta.artista, meta.titulo, meta.duracion, p.letra, p.salida)
@@ -97,7 +97,7 @@ def procesar(p: Peticion) -> tuple[str, Path]:
         etapa("letra", 0.3, "Sin letra disponible: transcribiendo la voz (Qwen3-ASR)")
         detectado, unidades = alineacion.transcribir(audio, p.idioma, lambda x: etapa(
             "letra", 0.3 + 0.65 * x, f"Transcribiendo la voz ({round(x * 100)} %)"))
-        alineacion._liberar_asr_si_falta_memoria()
+        alineacion.soltar_reconocedor()
         idioma_t = p.idioma or detectado
         if not unidades or idioma_t not in alineacion.IDIOMA_QWEN:
             raise ErrorFabrica("letra", "No se encontro letra y no se pudo transcribir la voz.")
@@ -161,11 +161,11 @@ def diagnostico() -> dict:
         info["error_torch"] = str(e)
     info["modelos"] = str(separacion.carpeta_modelos())
     try:
-        perfil = recursos.detectar()
-        info["perfil"] = perfil.nombre
-        info["perfil_descripcion"] = perfil.descripcion
-    except Exception as e:  # sin torch: no hay perfil
+        r = recursos.resumen()
+        info["perfil"] = r.separador
+        info["perfil_descripcion"] = r.descripcion
+    except Exception as e:  # sin torch: no hay resumen
         info["perfil"] = None
         info["perfil_descripcion"] = None
-        log.warning("No se pudo detectar el perfil del equipo: %s", e)
+        log.warning("No se pudo medir la memoria del equipo: %s", e)
     return json.loads(json.dumps(info))

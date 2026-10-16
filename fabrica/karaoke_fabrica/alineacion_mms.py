@@ -28,7 +28,9 @@ def _modelo():
     import torchaudio
 
     paquete = torchaudio.pipelines.MMS_FA
-    dispositivo = "cuda" if torch.cuda.is_available() else "cpu"
+    from .recursos import dispositivo_para
+
+    dispositivo, _ = dispositivo_para("mms")  # MMS va en float32: es pequeno
     log.info("Cargando MMS_FA en %s", dispositivo)
     modelo = paquete.get_model(with_star=False).to(dispositivo)
     return paquete, modelo, dispositivo, set(paquete.get_labels())
