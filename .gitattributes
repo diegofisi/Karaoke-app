@@ -1,0 +1,8 @@
+# Todo el texto se guarda con LF (Windows y macOS). Sin esto, editar en
+# Windows mezclaba CRLF y LF y el diff parecia reescribir archivos enteros.
+* text=auto eol=lf
+*.png binary
+*.ico binary
+*.icns binary
+*.wav binary
+*.mp3 binary
