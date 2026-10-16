@@ -52,3 +52,7 @@ y son sobre el usuario y esta máquina, no sobre aquel proyecto.
   con 0 errores y deja el origen eliminado.
 
 <!-- Entradas nuevas debajo de esta línea. -->
+- 2026-10-15 — Editar archivos con `pathlib.write_text` de Python en Windows los
+  guarda con CRLF y el diff parece reescribir el archivo entero · el revisor
+  rechazó el commit por eso · edita con la herramienta Edit/Write; si hace
+  falta un script, usa `write_bytes` con `\n`; `.gitattributes` ya fuerza LF.

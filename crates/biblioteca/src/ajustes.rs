@@ -19,6 +19,8 @@ pub struct Ajustes {
     pub volumen_musica: f64,
     /// 0 a 1; 0 = sin voz guia.
     pub volumen_guia: f64,
+    /// Multiplica el volumen de la voz del usuario en la grabacion; 1 = automatico. 0 a 3.
+    pub volumen_voz: f64,
     pub mostrar_romaji: bool,
     /// Grabar la voz durante la partida y guardarla mezclada con la musica.
     pub grabar: bool,
@@ -32,6 +34,7 @@ impl Default for Ajustes {
             dificultad: Dificultad::Normal,
             volumen_musica: 0.9,
             volumen_guia: 0.0,
+            volumen_voz: 1.0,
             mostrar_romaji: true,
             grabar: false,
         }
@@ -58,6 +61,7 @@ impl Ajustes {
         );
         self.volumen_musica = acotar(self.volumen_musica, 0.0, 1.0, defecto.volumen_musica);
         self.volumen_guia = acotar(self.volumen_guia, 0.0, 1.0, defecto.volumen_guia);
+        self.volumen_voz = acotar(self.volumen_voz, 0.0, 3.0, defecto.volumen_voz);
         if self
             .microfono
             .as_deref()

@@ -89,6 +89,12 @@ pub fn reanudar_juego(estado: State<'_, Estado>) -> Result<(), String> {
     enviar(&estado, Control::Reanudar)
 }
 
+/// Pone o quita la voz original durante la partida (0 = quitada, hasta 1).
+#[tauri::command(rename_all = "snake_case")]
+pub fn fijar_voz_guia(estado: State<'_, Estado>, volumen: f64) -> Result<(), String> {
+    enviar(&estado, Control::VozGuia(volumen))
+}
+
 #[tauri::command(rename_all = "snake_case")]
 pub fn buscar_juego(estado: State<'_, Estado>, t: f64) -> Result<(), String> {
     enviar(&estado, Control::Buscar(t))

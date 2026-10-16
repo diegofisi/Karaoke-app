@@ -21,7 +21,9 @@ pub struct Datos<'a> {
     pub titulo: &'a str,
     pub artista: &'a str,
     pub volumen_musica: f64,
+    /// Volumen de la voz guia al terminar la partida (en practica se puede cambiar al vuelo).
     pub volumen_guia: f64,
+    pub volumen_voz: f64,
 }
 
 /// `2026-10-15T22:41:07Z` -> `2026-10-15 22-41-07` (los `:` no valen en Windows).
@@ -109,6 +111,7 @@ pub fn guardar(d: &Datos<'_>, voz: &GrabacionVoz) -> Result<(Grabacion, Option<S
         d.volumen_musica as f32,
         guia.as_ref().map(|g| (g, d.volumen_guia as f32)),
         voz,
+        d.volumen_voz as f32,
     )
     .map_err(|e| e.to_string())?;
     let duracion = mezcla.muestras.len() as f64 / 2.0 / f64::from(mezcla.frecuencia.max(1));

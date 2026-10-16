@@ -67,6 +67,9 @@ export const pausarJuego = (): Promise<null> => invoke<null>("pausar_juego");
 
 export const reanudarJuego = (): Promise<null> => invoke<null>("reanudar_juego");
 
+/** Pone o quita la voz original durante la partida (0 = quitada, hasta 1). */
+export const fijarVozGuia = (volumen: number): Promise<null> => invoke<null>("fijar_voz_guia", { volumen });
+
 /** Solo en modo `practica`. */
 export const buscarJuego = (t: number): Promise<null> => invoke<null>("buscar_juego", { t });
 

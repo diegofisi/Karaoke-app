@@ -44,6 +44,7 @@ pub fn run() {
             comandos::juego::pausar_juego,
             comandos::juego::reanudar_juego,
             comandos::juego::buscar_juego,
+            comandos::juego::fijar_voz_guia,
             comandos::juego::detener_juego,
             comandos::grabaciones::listar_grabaciones,
             comandos::grabaciones::abrir_grabacion,

@@ -83,7 +83,7 @@ registra la licencia de cada una por si algún día se distribuye.
 | Qwen3-ASR / Qwen3-ForcedAligner (`qwen-asr`) | Apache-2.0 | sí |
 | SwiftF0 (`swift-f0`) | MIT | sí |
 | `fugashi` + `unidic-lite` + `cutlet` | MIT / BSD / MIT | sí |
-| MMS, `ctc-forced-aligner` con MMS | CC-BY-NC (no comercial) | candidato a medir |
+| MMS_FA (torchaudio), segunda opinión de alineación | CC-BY-NC (no comercial) | sí (`alineacion_mms.py`; +0,8 puntos medido el 2026-10-15) |
 | `jonatasgrosman/wav2vec2-large-xlsr-53-*` | Apache-2.0; el japonés entrenado con JSUT (no comercial) | candidato a medir |
 | RMVPE | posiblemente solo investigación (no verificado) | candidato a medir (tono) |
 | Modelos de separación "karaoke" que conservan coros (aufr33/viperx, becruily) | sin licencia localizable | candidato a medir |

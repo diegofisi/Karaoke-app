@@ -27,3 +27,12 @@ Las entradas del 2026-10-15 vienen de las dos versiones anteriores (rama
   Homebrew para el Finder de macOS) — por qué: sin runtime, YouTube devolvía
   HTTP 403 en la primera prueba real de la app — dónde:
   `fabrica/karaoke_fabrica/descarga.py` (`runtimes_js`).
+- 2026-10-15 — Las letras de LRCLIB traen marcas que no se cantan ("x 3",
+  "x 2" sueltas, "[Chorus]"); límpialas antes de alinear (`limpiar_lineas`)
+  — por qué: el alineador buscaba "x" y "3" en el audio y la frase repetida
+  escrita una sola vez desplazaba las líneas siguientes — dónde:
+  `fabrica/karaoke_fabrica/letra.py`.
+- 2026-10-15 — No subas la confianza mínima de la alineación para "ser más
+  exigente": con 0,65 empeoró (66,1 % frente a 67,5 %) porque mandaba al
+  respaldo líneas buenas. Para las líneas dudosas funciona mejor una segunda
+  opinión (MMS) — dónde: `alineacion.py` (`CONFIANZA_MINIMA`, `USAR_MMS`).

@@ -176,3 +176,75 @@ def test_melisma_da_dos_notas():
 
 def test_palabra_sin_voz_no_tiene_notas():
     assert notas_de_palabra(_curva([np.nan] * 40), 0.0, 40 * PASO) == []
+
+
+# --- limpieza de la letra -----------------------------------------------------
+
+from karaoke_fabrica.letra import LineaFuente, limpiar_lineas  # noqa: E402
+
+
+def test_limpiar_lineas_expande_repeticiones_y_quita_marcas():
+    entrada = [
+        LineaFuente("[Chorus]", 1.0),
+        LineaFuente("We came to burn this down x 3", 10.0),
+        LineaFuente("Hey! Hey!", 20.0),
+        LineaFuente("x 2", 30.0),
+        LineaFuente("(x2)", 31.0),
+        LineaFuente("Oh oh (3x)", 40.0),
+        LineaFuente("Coro:", 50.0),
+        LineaFuente("Max 5 veces", 60.0),
+    ]
+    salida = limpiar_lineas(entrada)
+    assert [(l.texto, l.inicio) for l in salida] == [
+        ("We came to burn this down", 10.0),
+        ("We came to burn this down", None),
+        ("We came to burn this down", None),
+        ("Hey! Hey!", 20.0),
+        ("Oh oh", 40.0),
+        ("Oh oh", None),
+        ("Oh oh", None),
+        ("Max 5 veces", 60.0),
+    ]
+
+
+def test_linea_entre_parentesis_que_se_canta_se_conserva():
+    salida = limpiar_lineas([LineaFuente("(Oh, baby)", None)])
+    assert [l.texto for l in salida] == ["(Oh, baby)"]
+
+
+# --- fin de palabra por actividad de la voz --------------------------------------
+
+from karaoke_fabrica.alineacion import extender_fines  # noqa: E402
+from karaoke_fabrica.modelo import Linea, Palabra  # noqa: E402
+
+
+def test_extender_fines_sigue_la_voz_sin_pisar_la_siguiente():
+    # Voz de 0,0 a 2,0 s (frames de 20 ms) y silencio despues.
+    activa = np.array([True] * 100 + [False] * 100)
+    linea = Linea(inicio=0.0, fin=1.4, texto="uno dos", confianza=1.0, metodo="alineada", palabras=[
+        Palabra("uno", 0.0, 0.3),   # la voz sigue: se alarga hasta el inicio de "dos"
+        Palabra("dos", 1.0, 1.4),   # se alarga hasta que acaba la voz (2,0 s)
+    ])
+    extender_fines([linea], activa)
+    assert linea.palabras[0].fin == pytest.approx(0.98, abs=0.021)
+    assert linea.palabras[1].fin == pytest.approx(2.0, abs=0.021)
+    assert linea.fin == linea.palabras[1].fin
+
+
+def test_extender_fines_no_acorta():
+    activa = np.zeros(100, dtype=bool)
+    linea = Linea(inicio=0.0, fin=0.5, texto="a", confianza=1.0, metodo="alineada", palabras=[Palabra("a", 0.0, 0.5)])
+    extender_fines([linea], activa)
+    assert linea.palabras[0].fin == 0.5
+
+
+@pytest.mark.parametrize("linea", [
+    "Bridge over troubled water", "Puente roto", "Hook me up", "Bis a bis", "Intro to love",
+])
+def test_letra_que_empieza_por_palabra_de_seccion_se_conserva(linea):
+    assert [l.texto for l in limpiar_lineas([LineaFuente(linea, None)])] == [linea]
+
+
+@pytest.mark.parametrize("linea", ["[Chorus]", "(Verso 2)", "Coro:", "Chorus 2", "[Hook: Artista]", "{Bridge}", "Pre-Chorus"])
+def test_cabeceras_de_seccion_se_quitan(linea):
+    assert limpiar_lineas([LineaFuente(linea, None)]) == []

@@ -145,6 +145,7 @@ argumentos se escriben en `snake_case` también en TypeScript
 | `pausar_juego` | — | `null` |
 | `reanudar_juego` | — | `null` |
 | `buscar_juego` | `t: number` | `null` (solo en modo `practica`) |
+| `fijar_voz_guia` | `volumen: number` | `null`. Pone (0–1) o quita (0) la voz original durante la partida |
 | `detener_juego` | — | `FinPartida \| null` (`null` si no había partida). Si se grababa, espera a que la grabación se guarde |
 | `listar_grabaciones` | — | `Grabacion[]` (más reciente primero) |
 | `abrir_grabacion` | `ruta: string` | `null`. La abre con el reproductor del sistema |
@@ -163,8 +164,10 @@ Microfono       { id: string, nombre: string, por_defecto: boolean }
 Dificultad      = "facil" | "normal" | "dificil"
 Modo            = "practica" | "puntuacion"
 Ajustes         { microfono: string | null, latencia_ms: number, dificultad: Dificultad,
-                  volumen_musica: number, volumen_guia: number, mostrar_romaji: boolean, grabar: boolean }
-                  // volúmenes 0–1; volumen_guia 0 = sin voz guía. Por defecto: null, 150, "normal", 0.9, 0, true, false
+                  volumen_musica: number, volumen_guia: number, volumen_voz: number,
+                  mostrar_romaji: boolean, grabar: boolean }
+                  // volúmenes 0–1; volumen_guia 0 = sin voz guía. volumen_voz 0–3 (1 = automático).
+                  // Por defecto: null, 150, "normal", 0.9, 0, 1, true, false
 ResultadoCalibracion { latencia_ms: number, medidas_ms: number[], fiable: boolean }
 ResultadoJuego  { puntos: number, nivel: Nivel, mejor_combo: number, precision_media: number,
                   por_calificacion: { perfecta, bien, regular, fallo }, record_anterior: number | null, es_record: boolean }

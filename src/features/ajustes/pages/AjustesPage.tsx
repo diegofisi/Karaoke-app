@@ -130,6 +130,16 @@ export const AjustesPage = () => {
           </Typography>
           <Slider min={0} max={1} step={0.05} value={b.volumen_guia}
             onChange={(_, v) => a.cambiar("volumen_guia", v as number)} aria-label="Volumen de la voz guía" />
+          <Typography variant="body2">
+            Tu voz en la grabación: {Math.round(b.volumen_voz * 100)} %
+            {b.volumen_voz === 1 ? " (automático)" : ""}
+          </Typography>
+          <Slider min={0} max={3} step={0.1} value={b.volumen_voz}
+            onChange={(_, v) => a.cambiar("volumen_voz", v as number)} aria-label="Volumen de tu voz en la grabación"
+            marks={[{ value: 1, label: "auto" }]} />
+          <Typography variant="caption" sx={{ color: "text.secondary" }}>
+            La voz ya se nivela sola y se comprime para que se entiendan las palabras; súbelo si aún se oye baja.
+          </Typography>
         </Seccion>
       </Stack>
     </Box>

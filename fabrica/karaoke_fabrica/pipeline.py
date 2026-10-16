@@ -67,6 +67,9 @@ def procesar(p: Peticion) -> tuple[str, Path]:
         meta = descarga.importar_local(p.audio, p.salida, p.titulo or p.audio.stem, p.artista or "")
     if p.titulo:
         meta.titulo = p.titulo
+    else:
+        # "Light It Up [HD]", "(Official Video)": se quitan tambien para mostrarlo.
+        meta.titulo = mod_letra.limpiar_titulo(meta.titulo) or meta.titulo
     if p.artista:
         meta.artista = p.artista
     original = p.salida / "original.wav"

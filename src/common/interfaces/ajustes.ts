@@ -17,6 +17,8 @@ export interface Ajustes {
   dificultad: Dificultad;
   volumen_musica: number;
   volumen_guia: number;
+  /** Volumen de tu voz en la grabación: 1 = automático, de 0 a 3. */
+  volumen_voz: number;
   mostrar_romaji: boolean;
   /** Grabar la voz durante la partida y guardarla mezclada con la música. */
   grabar: boolean;

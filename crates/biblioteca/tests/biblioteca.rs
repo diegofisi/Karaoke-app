@@ -249,6 +249,7 @@ fn ajustes_por_defecto_sin_archivo_o_corrupto() {
         dificultad: Dificultad::Normal,
         volumen_musica: 0.9,
         volumen_guia: 0.0,
+        volumen_voz: 1.0,
         mostrar_romaji: true,
         grabar: false,
     };
@@ -282,6 +283,7 @@ fn ajustes_ida_y_vuelta() {
         dificultad: Dificultad::Facil,
         volumen_musica: 0.5,
         volumen_guia: 0.3,
+        volumen_voz: 1.5,
         mostrar_romaji: false,
         grabar: false,
     };

@@ -39,6 +39,8 @@ SR = 16000
 
 DURACION_MINIMA = 0.05      # s por palabra
 CONFIANZA_MINIMA = 0.5
+PASO_ACTIVIDAD = 0.02        # s por frame de actividad_voz
+HUECO_MINIMO = 0.02          # s entre el fin de una palabra y el inicio de la siguiente
 MARGEN = 0.6                # s de margen de la ventana fina a cada lado
 SEGUNDOS_POR_PALABRA = 0.3  # para extrapolar desde el ancla mas cercana
 ACUERDO = 0.35              # s: la alineacion fina y el ancla "coinciden" si difieren menos
@@ -47,6 +49,8 @@ TROZO_MINIMO = 15.0         # s, reconocimiento por trozos cortos
 TROZO_MAXIMO = 30.0
 GRUPO_MAXIMO = 20.0         # s: lineas situadas se agrupan hasta este largo
 GRUPO_LIMITE = 40.0         # s: un tramo sin situar mas largo se parte
+USAR_MMS = True             # segunda opinion (MMS) para lo que Qwen no alinea
+MMS_MINIMA = 0.05           # probabilidad media por caracter para aceptar a MMS
 RONDAS = 2                  # realineaciones de lo no confiable entre vecinas confiables
 
 
@@ -404,6 +408,27 @@ def letra_desde_unidades(unidades: list[Unidad], idioma: str) -> Letra:
     return Letra(lineas, "transcrita")
 
 
+def extender_fines(lineas: list[Linea], activa: np.ndarray) -> None:
+    """Alarga el fin de cada palabra mientras la voz siga sonando.
+
+    El alineador marca bien el inicio pero corta pronto el fin de las vocales
+    sostenidas, y el coloreado de la letra va de inicio a fin. Cada palabra se
+    alarga sobre frames con voz hasta, como mucho, el inicio de la siguiente.
+    Modifica las lineas.
+    """
+    palabras = [p for l in lineas for p in l.palabras]
+    n_frames = len(activa)
+    for k, p in enumerate(palabras):
+        limite = palabras[k + 1].inicio - HUECO_MINIMO if k + 1 < len(palabras) else p.fin + 2.0
+        f = int(p.fin / PASO_ACTIVIDAD)
+        while f < n_frames and activa[f] and (f + 1) * PASO_ACTIVIDAD <= limite:
+            f += 1
+        p.fin = max(p.fin, min(f * PASO_ACTIVIDAD, limite))
+    for l in lineas:
+        if l.palabras:
+            l.fin = l.palabras[-1].fin
+
+
 def actividad_voz(voz: np.ndarray) -> np.ndarray:
     """Frames de 20 ms con voz en la pista separada (energia sobre un umbral relativo)."""
     paso = int(0.02 * SR)
@@ -543,7 +568,7 @@ def alinear(letra: Letra, audio: np.ndarray, idioma: str, duracion: float,
     desfase = 0.0
     if letra.sincronizada:
         difs = [a[0][0] - float(f.inicio) for f, a in zip(fuentes, anclas)  # type: ignore[arg-type]
-                if a and a[0] is not None]
+                if a and a[0] is not None and f.inicio is not None]
         if difs:
             desfase = float(np.median(difs))
             log.info("Desfase LRC -> audio: %.2f s", desfase)
@@ -573,6 +598,36 @@ def alinear(letra: Letra, audio: np.ndarray, idioma: str, duracion: float,
                 finas[linea], confianza[linea], mejoro = ivs, c, True
         if not mejoro:
             break
+
+    # Segunda opinion: MMS (CTC + Viterbi) sobre los tramos que siguen sin confianza.
+    if USAR_MMS:
+        confiable = [c >= CONFIANZA_MINIMA and all(iv is not None for iv in f) for c, f in zip(confianza, finas)]
+        if any(confiable) and not all(confiable):
+            from . import alineacion_mms
+
+            rescatadas = 0
+            for t0, t1, indices in _huecos(confiable, finas, largos, duracion):
+                a, b = max(0.0, t0 - 0.2), min(duracion, t1 + 0.2)
+                todas = [p for k in indices for p in por_linea[k]]
+                try:
+                    ivs_mms, conf_mms = alineacion_mms.alinear(audio[int(a * SR):int(b * SR)], todas, idioma, a)
+                except Exception as e:  # MMS es opcional: si falla, sigue el respaldo
+                    log.warning("MMS fallo en un tramo: %s", e)
+                    continue
+                k = 0
+                for linea in indices:
+                    n = len(por_linea[linea])
+                    ivs = _ordenar(ivs_mms[k:k + n])
+                    puntos = [c for c in conf_mms[k:k + n] if c is not None]
+                    k += n
+                    if not puntos or float(np.mean(puntos)) < MMS_MINIMA:
+                        continue
+                    # Sin anclas: en estas lineas suelen ser justo lo que esta mal.
+                    c = _confianza(ivs, [None] * n)
+                    if c >= CONFIANZA_MINIMA and c > confianza[linea]:
+                        finas[linea], confianza[linea] = ivs, c
+                        rescatadas += 1
+            log.info("MMS rescato %d lineas", rescatadas)
 
     # Respaldo: las lineas que siguen sin confianza se reparten sobre la voz entre sus vecinas.
     activa = actividad_voz(voz if voz is not None else audio)
@@ -607,6 +662,7 @@ def alinear(letra: Letra, audio: np.ndarray, idioma: str, duracion: float,
             palabras=palabras_linea, confianza=round(confianza[i], 3), metodo=metodo,  # type: ignore[arg-type]
             romaji=romaji(fuente.texto) if idioma == "ja" else None,
         ))
+    extender_fines(lineas, activa)
     en_respaldo = sum(1 for l in lineas if l.metodo == "respaldo")
     if en_respaldo:
         aviso(f"{en_respaldo} de {len(lineas)} lineas tienen tiempos aproximados.")

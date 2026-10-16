@@ -26,6 +26,8 @@ pub enum Control {
     Reanudar,
     Buscar(f64),
     Detener,
+    /// Volumen de la voz guia (0 = apagada), al vuelo.
+    VozGuia(f64),
     /// Termina sin guardar resultado (partida abierta de mas o cancelada al arrancar).
     Descartar,
 }
@@ -162,6 +164,7 @@ fn bucle(
     }
     audio.reproductor.reproducir();
     let mut pausado = false;
+    let mut volumen_guia = config.ajustes.volumen_guia;
     let mut descartada = false;
     let mut muestras = Vec::with_capacity(8192);
     let mut voz = config
@@ -178,6 +181,12 @@ fn bucle(
                 if let Some(v) = voz.as_mut() {
                     v.cortar();
                 }
+            }
+            Ok(Control::VozGuia(v)) => {
+                volumen_guia = v.clamp(0.0, 1.0);
+                audio
+                    .reproductor
+                    .fijar_volumenes(config.ajustes.volumen_musica as f32, volumen_guia as f32);
             }
             Ok(Control::Reanudar) => {
                 audio.reloj.reiniciar();
@@ -295,7 +304,8 @@ fn bucle(
                 titulo: &cancion.titulo,
                 artista: &cancion.artista,
                 volumen_musica: config.ajustes.volumen_musica,
-                volumen_guia: config.ajustes.volumen_guia,
+                volumen_guia,
+                volumen_voz: config.ajustes.volumen_voz,
             };
             match grabar::guardar(&datos, &v) {
                 Ok((g, aviso)) => (Some(g), aviso),

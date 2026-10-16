@@ -26,7 +26,17 @@ el índice cu130). Modelos en `~/.karaoke/modelos` y en la caché de Hugging Fac
 | v2 | Anclas con el reconocedor (con la letra como contexto) | 30,6 % | 3 391 ms |
 | v3 | Reconocedor por trozos de 15-30 s, sin contexto | 64,1 % | 68 ms |
 | v4 | + alineación por grupos acotados por anclas | 66,4 % (es 70,9 %) | 64 ms |
-| **v5** (en uso) | + rondas que realinean lo no confiable entre vecinas confiables; respaldo sobre tramos con voz | **67,5 %** (es 70,2 %); a ≤300 ms 85,4 %; error medio 353 ms (v4: 654) | 62 ms |
+| v5 | + rondas que realinean lo no confiable entre vecinas confiables; respaldo sobre tramos con voz | **67,5 %** (es 70,2 %); a ≤300 ms 85,4 %; error medio 353 ms (v4: 654) | 62 ms |
+| v6a | + fin de palabra alargado mientras suena la voz (coloreado) | 67,5 %; error del fin 380 → 356 ms | 62 ms |
+| v6b | confianza mínima 0,65 (descartada: empeora) | 66,1 % | 65 ms |
+| **v6f** (en uso) | + segunda opinión MMS (CTC) en las líneas que Qwen no alinea, juzgada sin anclas, umbral 0,05 | **70,6 %**; líneas aproximadas 44 → 16; error medio 311 ms | 59 ms |
+
+Validación en 10 canciones **no usadas para ajustar** (`--desde 5`): v5 79,2 %
+→ v6f **81,7 %** a ≤100 ms; error medio 285 → 173 ms; líneas aproximadas 27 → 8.
+
+Limpieza de letra (2026-10-15): marcas de repetición ("x 3") expandidas y
+marcas sueltas o de sección quitadas. En "Light It Up": 4 → 2 líneas
+aproximadas.
 | techo medido | Alinear con tramos de ~20 s bien colocados | 70,5 % (1 canción) | 56 ms |
 
 Lecciones (ya en el código y en sus comentarios):

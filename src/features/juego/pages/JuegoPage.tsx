@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
@@ -13,7 +14,7 @@ import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import ReplayIcon from "@mui/icons-material/Replay";
 import StopIcon from "@mui/icons-material/Stop";
 import FiberManualRecordIcon from "@mui/icons-material/FiberManualRecord";
-import { useAjustes, useCancion, useGuardarAjustes } from "@/common/api/consultas";
+import { useAjustes, useCancion, useFijarVozGuia, useGuardarAjustes } from "@/common/api/consultas";
 import { AvisoGrabacion } from "@/common/components/AvisoGrabacion";
 import { EstadoContenido } from "@/common/components/EstadoContenido";
 import { mensajeDeError } from "@/common/helpers/errores";
@@ -64,6 +65,13 @@ const Partida = ({ cancion, ajustes, modo }: PartidaProps) => {
   const acciones = useAccionesGrabacion();
   const { fase } = juego;
   const fijarGrabar = (grabar: boolean) => guardado.mutate({ ...ajustes, grabar });
+  // Voz original en practica: empieza como diga Ajustes y se cambia al vuelo.
+  const vozGuia = useFijarVozGuia();
+  const [conVozOriginal, fijarConVozOriginal] = useState(ajustes.volumen_guia > 0);
+  const cambiarVozOriginal = (activa: boolean) => {
+    fijarConVozOriginal(activa);
+    vozGuia.mutate(activa ? (ajustes.volumen_guia > 0 ? ajustes.volumen_guia : 0.7) : 0);
+  };
   const enCurso = fase === FaseJuego.Sonando || fase === FaseJuego.Pausada;
 
   if (fase === FaseJuego.Error) {
@@ -95,6 +103,14 @@ const Partida = ({ cancion, ajustes, modo }: PartidaProps) => {
             {cancion.artista}
           </Typography>
         </Stack>
+        {modo === Modo.Practica && (
+          <FormControlLabel
+            control={
+              <Switch checked={conVozOriginal} onChange={(e) => cambiarVozOriginal(e.target.checked)} disabled={!enCurso} />
+            }
+            label="Voz original"
+          />
+        )}
         {ajustes.grabar && enCurso && (
           <Chip icon={<FiberManualRecordIcon />} label="Grabando" color="error" variant="outlined" />
         )}

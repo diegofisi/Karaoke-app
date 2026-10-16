@@ -36,7 +36,54 @@ class Letra:
 
     @property
     def sincronizada(self) -> bool:
-        return bool(self.lineas) and all(l.inicio is not None for l in self.lineas)
+        """Trae tiempos LRC. Las repeticiones expandidas ("x3") no los tienen."""
+        return any(l.inicio is not None for l in self.lineas)
+
+
+# Cabecera de seccion que no se canta: "[Chorus]", "(Verso 2)", "Coro:", "Chorus 2".
+# Solo entre corchetes/parentesis, o la palabra sola (con numero o ":"
+# opcionales): "Bridge over troubled water" o "Puente roto" SI se cantan.
+_PALABRAS_SECCION = (
+    r"(?:pre-?\s*)?(?:chorus|verse|bridge|intro|outro|hook|refrain|interlude|instrumental|"
+    r"coro|estribillo|verso|estrofa|puente|repeat|repite|repetir|bis)"
+)
+_SECCION = re.compile(
+    rf"^\s*(?:[\[\(\{{]\s*{_PALABRAS_SECCION}\b[^\]\)\}}]*[\]\)\}}]|{_PALABRAS_SECCION}\s*\d*)\s*:?\s*$",
+    re.IGNORECASE,
+)
+# Repeticion: "x3", "x 3", "(x3)", "[3x]", "×2". Sola en la linea o al final.
+_REPETICION = r"[\(\[]?\s*(?:[x×]\s*(\d{1,2})|(\d{1,2})\s*[x×])\s*[\)\]]?"
+_REPETICION_SOLA = re.compile(rf"^\s*{_REPETICION}\s*$", re.IGNORECASE)
+_REPETICION_FINAL = re.compile(rf"^(.*\S)\s+{_REPETICION}\s*$", re.IGNORECASE)
+MAX_REPETICIONES = 8
+
+
+def limpiar_lineas(lineas: list[LineaFuente]) -> list[LineaFuente]:
+    """Quita lo que no se canta y expande las repeticiones.
+
+    Visto el 2026-10-15 en una letra real de LRCLIB: una linea "x 2" y otra
+    terminada en "x 3". El alineador buscaba "x" y "3" en el audio, fallaba, y
+    como la frase se canta 3 veces pero estaba escrita una, desplazaba las
+    lineas siguientes. Ahora: "frase x3" -> la frase 3 veces (solo la primera
+    conserva su tiempo LRC); una "x 2" suelta o una cabecera de seccion se
+    quitan.
+    """
+    salida: list[LineaFuente] = []
+    for l in lineas:
+        texto = l.texto.strip()
+        if not texto or _SECCION.match(texto) or _REPETICION_SOLA.match(texto):
+            continue
+        m = _REPETICION_FINAL.match(texto)
+        if m:
+            veces = int(m.group(2) or m.group(3))
+            frase = m.group(1).strip()
+            if 2 <= veces <= MAX_REPETICIONES:
+                salida.append(LineaFuente(frase, l.inicio))
+                salida.extend(LineaFuente(frase, None) for _ in range(veces - 1))
+                continue
+            texto = frase
+        salida.append(LineaFuente(texto, l.inicio))
+    return salida
 
 
 def limpiar_titulo(titulo: str) -> str:
@@ -162,16 +209,21 @@ def obtener(artista: str, titulo: str, duracion: float, archivo_usuario: Path | 
     etapa("letra", 0.0, "Buscando la letra")
     if archivo_usuario is not None:
         letra = desde_archivo(archivo_usuario)
+        letra.lineas = limpiar_lineas(letra.lineas)
         etapa("letra", 1.0, f"Letra del usuario: {len(letra.lineas)} lineas")
         return letra
     cache = carpeta / "letra.json" if carpeta else None
     if cache and cache.exists():
         letra = _de_json(json.loads(cache.read_text(encoding="utf-8")))
+        letra.lineas = limpiar_lineas(letra.lineas)
         etapa("letra", 1.0, f"Letra guardada ({letra.origen}): {len(letra.lineas)} lineas")
         return letra
     letra = buscar_lrclib(artista, titulo, duracion)
     if letra and cache:
+        # La cache guarda la letra tal cual llego; la limpieza se aplica al leerla.
         cache.write_text(json.dumps(_a_json(letra), ensure_ascii=False, indent=1), encoding="utf-8")
+    if letra:
+        letra.lineas = limpiar_lineas(letra.lineas)
     if letra:
         tipo = "sincronizada" if letra.sincronizada else "sin tiempos"
         etapa("letra", 1.0, f"Letra de LRCLIB ({tipo}): {len(letra.lineas)} lineas")

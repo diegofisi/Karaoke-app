@@ -9,7 +9,10 @@ filtrarle la respuesta. La separacion se guarda en eval/datos/salidas y se
 reutiliza entre ejecuciones; la alineacion se rehace siempre.
 
 Uso (desde la raiz del repo):
-    fabrica/.venv/Scripts/python.exe eval/medir.py --idiomas en es [--n 5] [--alinear-sobre voz|mezcla]
+    fabrica/.venv/Scripts/python.exe eval/medir.py --idiomas en es [--n 5] [--desde 5] [--alinear-sobre voz|mezcla]
+
+Las 5 primeras canciones de cada idioma se usaron para ajustar la alineacion
+(2026-10-15); `--desde 5` mide en canciones que no se miraron al ajustar.
 
 Salida: tabla por cancion y total, y un JSON en eval/resultados/<fecha>-<etiqueta>.json.
 Metricas (las de doc 11, seccion 6):
@@ -84,6 +87,8 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--idiomas", nargs="+", default=["en", "es"])
     ap.add_argument("--n", type=int, default=0, help="como mucho n canciones por idioma (0 = todas)")
+    ap.add_argument("--desde", type=int, default=0,
+                    help="saltar las primeras canciones de cada idioma (para medir en canciones no usadas al ajustar)")
     ap.add_argument("--alinear-sobre", choices=["voz", "mezcla"], default="voz")
     ap.add_argument("--etiqueta", default="")
     args = ap.parse_args()
@@ -94,13 +99,15 @@ def main() -> int:
     eventos.preparar_salida(None)
 
     canciones = cargar_canciones(args.idiomas)
-    if args.n:
+    if args.n or args.desde:
+        # Por idioma: las canciones de la posicion `desde` a `desde + n`.
         por_idioma: dict[str, int] = {}
         filtradas = []
         for c in canciones:
-            if por_idioma.get(c["language"], 0) < args.n:
+            k = por_idioma.get(c["language"], 0)
+            if k >= args.desde and (not args.n or k < args.desde + args.n):
                 filtradas.append(c)
-                por_idioma[c["language"]] = por_idioma.get(c["language"], 0) + 1
+            por_idioma[c["language"]] = k + 1
         canciones = filtradas
 
     filas = []

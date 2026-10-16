@@ -19,6 +19,7 @@ import {
   cancelarProceso,
   detenerJuego,
   estadoFabrica,
+  fijarVozGuia,
   guardarAjustes,
   iniciarJuego,
   listarCanciones,
@@ -135,6 +136,8 @@ export const useIniciarJuego = () =>
 export const usePausarJuego = () => useMutation({ mutationFn: pausarJuego });
 
 export const useReanudarJuego = () => useMutation({ mutationFn: reanudarJuego });
+
+export const useFijarVozGuia = () => useMutation({ mutationFn: (volumen: number) => fijarVozGuia(volumen) });
 
 export const useBuscarJuego = () => useMutation({ mutationFn: (t: number) => buscarJuego(t) });
 

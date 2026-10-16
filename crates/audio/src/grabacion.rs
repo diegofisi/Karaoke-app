@@ -97,8 +97,19 @@ impl GrabacionVoz {
 /// Margen de musica antes de la primera voz y despues de la ultima.
 const MARGEN_INICIO_S: f64 = 2.0;
 const MARGEN_FIN_S: f64 = 3.0;
-/// Nivel RMS al que se lleva la voz (solo cuenta donde hay voz).
-const RMS_VOZ_OBJETIVO: f32 = 0.18;
+/// Nivel RMS al que se lleva la voz (solo cuenta donde hay voz). Una pista
+/// masterizada ronda 0,2-0,3: con 0,18 la voz quedaba por debajo de la musica
+/// (lo noto el usuario el 2026-10-15).
+const RMS_VOZ_OBJETIVO: f32 = 0.28;
+/// La musica entra algo mas baja en la grabacion que al jugar, para que la voz se entienda.
+pub const MUSICA_EN_GRABACION: f32 = 0.75;
+/// Filtro de graves: quita golpes y zumbido por debajo de esta frecuencia.
+const CORTE_GRAVES_HZ: f32 = 80.0;
+/// Compresor: por encima del umbral, la subida se divide por la razon.
+const UMBRAL_COMPRESOR: f32 = 0.22;
+const RAZON_COMPRESOR: f32 = 3.0;
+const ATAQUE_S: f32 = 0.005;
+const RELAJACION_S: f32 = 0.12;
 /// Por debajo de esto una muestra se considera silencio para medir la voz.
 const UMBRAL_SILENCIO: f32 = 0.01;
 const PICO_MAXIMO: f32 = 0.98;
@@ -119,14 +130,48 @@ pub fn ganancia_voz(voz: &GrabacionVoz) -> f32 {
     (RMS_VOZ_OBJETIVO / rms.max(1e-6)).clamp(1.0, 10.0)
 }
 
+/// Filtro paso alto de un polo (quita graves por debajo de `corte_hz`).
+pub fn filtrar_graves(muestras: &mut [f32], fs: u32, corte_hz: f32) {
+    let rc = 1.0 / (2.0 * std::f32::consts::PI * corte_hz);
+    let dt = 1.0 / fs.max(1) as f32;
+    let a = rc / (rc + dt);
+    let (mut x_prev, mut y_prev) = (0.0f32, 0.0f32);
+    for m in muestras.iter_mut() {
+        let y = a * (y_prev + *m - x_prev);
+        x_prev = *m;
+        y_prev = y;
+        *m = y;
+    }
+}
+
+/// Compresor con seguidor de envolvente: iguala silabas fuertes y debiles
+/// para que todas las palabras se entiendan en la mezcla.
+pub fn comprimir(muestras: &mut [f32], fs: u32, umbral: f32, razon: f32) {
+    let fs = fs.max(1) as f32;
+    let ataque = (-1.0 / (ATAQUE_S * fs)).exp();
+    let relajacion = (-1.0 / (RELAJACION_S * fs)).exp();
+    let mut env = 0.0f32;
+    for m in muestras.iter_mut() {
+        let nivel = m.abs();
+        let coef = if nivel > env { ataque } else { relajacion };
+        env = coef * env + (1.0 - coef) * nivel;
+        if env > umbral {
+            let objetivo = umbral + (env - umbral) / razon;
+            *m *= objetivo / env;
+        }
+    }
+}
+
 /// Mezcla la musica (y la voz guia, si se da con su volumen) con la voz del
-/// usuario. Salida estereo a la frecuencia de la musica, recortada al tramo
-/// cantado con un margen. Sin voz grabada devuelve error.
+/// usuario. La voz pasa por filtro de graves, ganancia automatica por
+/// `volumen_voz` y compresor. Salida estereo a la frecuencia de la musica,
+/// recortada al tramo cantado con un margen. Sin voz grabada devuelve error.
 pub fn mezclar(
     musica: &AudioPcm,
     volumen_musica: f32,
     guia: Option<(&AudioPcm, f32)>,
     voz: &GrabacionVoz,
+    volumen_voz: f32,
 ) -> Result<AudioPcm, ErrorAudio> {
     let Some((ini_voz, fin_voz)) = voz.tramo() else {
         return Err(ErrorAudio::Conversion("no hay voz grabada".into()));
@@ -154,16 +199,25 @@ pub fn mezclar(
             }
         }
     };
-    sumar(&base, volumen_musica);
+    sumar(&base, volumen_musica * MUSICA_EN_GRABACION);
     if let Some((g, volumen)) = guia.filter(|(_, v)| *v > 0.0) {
         let estereo = adaptar_canales(&g.muestras, g.canales, 2);
         let a_fs = remuestrear(estereo, 2, g.frecuencia, fs)?;
-        sumar(&a_fs, volumen);
+        sumar(&a_fs, volumen * MUSICA_EN_GRABACION);
     }
 
-    let ganancia = ganancia_voz(voz);
+    let ganancia = ganancia_voz(voz) * volumen_voz.max(0.0);
     for s in voz.segmentos() {
-        let mono = remuestrear(s.muestras.clone(), 1, voz.frecuencia(), fs)?;
+        let mut limpia = s.muestras.clone();
+        filtrar_graves(&mut limpia, voz.frecuencia(), CORTE_GRAVES_HZ);
+        limpia.iter_mut().for_each(|m| *m *= ganancia);
+        comprimir(
+            &mut limpia,
+            voz.frecuencia(),
+            UMBRAL_COMPRESOR,
+            RAZON_COMPRESOR,
+        );
+        let mono = remuestrear(limpia, 1, voz.frecuencia(), fs)?;
         let inicio = (s.inicio * fs_f).round() as i64 - desde as i64;
         for (j, m) in mono.iter().enumerate() {
             let k = inicio + j as i64;
@@ -174,8 +228,8 @@ pub fn mezclar(
             if k >= cuadros {
                 break;
             }
-            salida[2 * k] += m * ganancia;
-            salida[2 * k + 1] += m * ganancia;
+            salida[2 * k] += m;
+            salida[2 * k + 1] += m;
         }
     }
 
@@ -244,7 +298,7 @@ mod pruebas {
         let mut voz = vec![0.0f32; 200];
         voz[0] = 0.5; // un pulso en la primera muestra
         g.anadir(0, 5.0, &voz);
-        let mezcla = mezclar(&musica, 1.0, None, &g).unwrap();
+        let mezcla = mezclar(&musica, 1.0, None, &g, 1.0).unwrap();
         // Recorte: empieza 2 s antes de la voz (t = 3.0), asi el pulso esta en 2.0 s.
         let primero = mezcla.muestras.iter().position(|m| m.abs() > 0.0).unwrap();
         assert_eq!(primero / 2, 2 * fs as usize);
@@ -258,7 +312,7 @@ mod pruebas {
         musica.muestras.iter_mut().for_each(|m| *m = 0.9);
         let mut g = GrabacionVoz::new(fs);
         g.anadir(0, 1.0, &[0.9; 1000]);
-        let mezcla = mezclar(&musica, 1.0, None, &g).unwrap();
+        let mezcla = mezclar(&musica, 1.0, None, &g, 1.0).unwrap();
         assert!(
             mezcla
                 .muestras
@@ -276,7 +330,38 @@ mod pruebas {
     }
 
     #[test]
+    fn el_compresor_acerca_fuertes_y_debiles() {
+        let mut fuerte = vec![0.9f32; 2000];
+        let mut debil = vec![0.1f32; 2000];
+        comprimir(&mut fuerte, 1000, UMBRAL_COMPRESOR, RAZON_COMPRESOR);
+        comprimir(&mut debil, 1000, UMBRAL_COMPRESOR, RAZON_COMPRESOR);
+        let antes = 0.9 / 0.1;
+        let despues = fuerte[1999] / debil[1999];
+        assert!(
+            despues < antes / 2.0,
+            "razon antes {antes}, despues {despues}"
+        );
+        assert!((debil[1999] - 0.1).abs() < 1e-6, "lo debil no se toca");
+    }
+
+    #[test]
+    fn el_filtro_quita_la_continua() {
+        let mut v = vec![0.5f32; 4000];
+        filtrar_graves(&mut v, 1000, 80.0);
+        assert!(v[3999].abs() < 1e-3);
+    }
+
+    #[test]
     fn sin_voz_es_error() {
-        assert!(mezclar(&silencio(1.0, 1000), 1.0, None, &GrabacionVoz::new(1000)).is_err());
+        assert!(
+            mezclar(
+                &silencio(1.0, 1000),
+                1.0,
+                None,
+                &GrabacionVoz::new(1000),
+                1.0
+            )
+            .is_err()
+        );
     }
 }
