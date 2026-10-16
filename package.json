@@ -1,14 +1,15 @@
 {
   "name": "karaoke",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
     "typecheck": "tsc -b",
     "tauri": "tauri",
-    "verify": "node scripts/verify.mjs"
+    "verify": "node scripts/verify.mjs",
+    "binarios": "node scripts/descargar-binarios.mjs"
   },
   "dependencies": {
     "@emotion/react": "11.14.0",

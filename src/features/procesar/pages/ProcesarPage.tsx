@@ -5,7 +5,8 @@ import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
-import { AvisoFabrica } from "@/common/components/AvisoFabrica";
+import { PanelRequisitos } from "@/common/components/PanelRequisitos";
+import { useInstalacionFabrica } from "@/common/hooks/useInstalacionFabrica";
 import { CabeceraPagina } from "@/common/components/CabeceraPagina";
 import { FormularioProceso } from "../components/FormularioProceso";
 import { TarjetaTrabajo } from "../components/TarjetaTrabajo";
@@ -13,6 +14,7 @@ import { useProcesar } from "../hooks/useProcesar";
 
 export const ProcesarPage = () => {
   const procesar = useProcesar();
+  const instalacion = useInstalacionFabrica();
 
   return (
     <Box sx={{ maxWidth: 920 }}>
@@ -20,7 +22,12 @@ export const ProcesarPage = () => {
         titulo="Procesar"
         subtitulo="La fábrica separa la voz, alinea la letra palabra por palabra y saca las notas. Tarda de 1 a 3 minutos con GPU."
       />
-      <AvisoFabrica estado={procesar.estadoFabrica} error={procesar.errorFabrica} />
+      <PanelRequisitos
+        estado={procesar.estadoFabrica}
+        error={procesar.errorFabrica}
+        instalacion={instalacion}
+        mostrarSiListo={true}
+      />
 
       <Card sx={{ mb: 4 }}>
         <CardContent sx={{ p: 3 }}>

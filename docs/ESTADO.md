@@ -97,3 +97,17 @@ abre candidatos que antes estaban descartados, y cada uno se mide con `eval/`:
 - Fase 4 (palabras en directo con sherpa-onnx + Nemotron 3.5) y fase 5
   (empaquetar la fábrica con su Python).
 - Nada de esto está commiteado. El usuario decide cuándo.
+
+## Sin requisitos previos (2026-10-16, versión 0.2.0)
+
+- **Comprobación antes de procesar**: la fábrica (Python, PyTorch, modelos),
+  ffmpeg, el runtime de JavaScript y la GPU, con ✓/✗ y qué hacer. El botón
+  Procesar queda bloqueado hasta que lo obligatorio esté en verde (también
+  mientras se comprueba).
+- **Herramientas dentro de la app**: ffmpeg 9.0.2, Deno 2.9.7 y uv 0.12.19
+  (sidecars; `scripts/descargar-binarios.mjs`, SHA-256 fijados).
+- **Fábrica autoinstalable**: «Instalar la fábrica» descarga con uv Python
+  3.12, PyTorch 2.14.1 (CUDA / CPU / MPS), la fábrica y los modelos en
+  `<datos>/entorno/`. Probado desde cero en Windows (5/5 pasos) y procesando
+  una canción de YouTube con un PATH limpio (sin ffmpeg ni Node del sistema).
+- Sin probar en un Mac real.

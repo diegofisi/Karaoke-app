@@ -1,7 +1,8 @@
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import AddIcon from "@mui/icons-material/Add";
-import { AvisoFabrica } from "@/common/components/AvisoFabrica";
+import { PanelRequisitos } from "@/common/components/PanelRequisitos";
+import { useInstalacionFabrica } from "@/common/hooks/useInstalacionFabrica";
 import { CabeceraPagina } from "@/common/components/CabeceraPagina";
 import { EstadoContenido } from "@/common/components/EstadoContenido";
 import { DialogoBorrar } from "../components/DialogoBorrar";
@@ -11,6 +12,7 @@ import { useBiblioteca } from "../hooks/useBiblioteca";
 
 export const BibliotecaPage = () => {
   const biblioteca = useBiblioteca();
+  const instalacion = useInstalacionFabrica();
   const { filas, cargando, error } = biblioteca;
 
   return (
@@ -24,7 +26,12 @@ export const BibliotecaPage = () => {
           </Button>
         }
       />
-      <AvisoFabrica estado={biblioteca.estadoFabrica} error={biblioteca.errorFabrica} />
+      <PanelRequisitos
+        estado={biblioteca.estadoFabrica}
+        error={biblioteca.errorFabrica}
+        instalacion={instalacion}
+        mostrarSiListo={false}
+      />
 
       {cargando && <EstadoContenido tipo="cargando" mensaje="Leyendo la biblioteca…" />}
       {!cargando && error !== null && filas.length === 0 && (

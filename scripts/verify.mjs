@@ -11,6 +11,8 @@ const python = process.platform === "win32"
   : path.join(raiz, "fabrica", ".venv", "bin", "python");
 
 const pasos = [
+  // tauri-build exige que existan los sidecars (ffmpeg, deno, uv).
+  ["binarios", "npm", ["run", "binarios"]],
   ["typecheck + build web", "npm", ["run", "build"]],
   ["cargo clippy", "cargo", ["clippy", "-j", "4", "--workspace", "--all-targets", "--", "-D", "warnings"]],
   ["cargo test", "cargo", ["test", "-j", "4", "--workspace"]],

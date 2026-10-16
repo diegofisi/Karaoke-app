@@ -58,3 +58,7 @@ dist/
 
 # Datos de desarrollo (canciones procesadas)
 .datos-dev/
+
+# Herramientas empaquetadas en la app (las baja scripts/descargar-binarios.mjs)
+src-tauri/binaries/
+fabrica/build/

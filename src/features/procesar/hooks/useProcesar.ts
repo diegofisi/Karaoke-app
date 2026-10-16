@@ -57,7 +57,8 @@ export const useProcesar = (): DatosProcesar => {
   const [errorDialogo, fijarErrorDialogo] = useState<string | null>(null);
 
   const problema = problemaDeFormulario(formulario);
-  const fabricaNoLista = fabrica.data?.lista === false;
+  // Bloqueado tambien mientras se comprueba o si la comprobacion falla.
+  const fabricaNoLista = fabrica.data?.lista !== true;
 
   const cambiar: CambiarCampo = (campo, valor) =>
     fijarFormulario((anterior) => ({ ...anterior, [campo]: valor }));

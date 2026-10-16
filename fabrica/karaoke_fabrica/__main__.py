@@ -28,8 +28,22 @@ def main(argv: list[str] | None = None) -> int:
     pr.add_argument("--alinear-sobre", choices=["voz", "mezcla"], default="voz")
 
     sub.add_parser("diagnostico", help="Python, GPU y carpeta de modelos")
+    sub.add_parser("preparar", help="Descarga todos los modelos de antemano")
 
     args = ap.parse_args(argv)
+
+    if args.orden == "preparar":
+        eventos.preparar_salida(None)
+        from .preparar import preparar
+
+        try:
+            preparar()
+        except Exception as e:  # sin red, sin disco: sale como evento, no como traza en stdout
+            traceback.print_exc(file=sys.stderr)
+            emitir("error", etapa="preparar", mensaje=f"No se pudieron descargar los modelos: {e}")
+            return 1
+        emitir("listo", id="", ruta="")
+        return 0
 
     if args.orden == "diagnostico":
         eventos.preparar_salida(None)

@@ -50,6 +50,8 @@ pub struct Estado {
     pub audio: Mutex<UsoAudio>,
     /// Resultado de `diagnostico`, una vez por sesion.
     pub diagnostico: Mutex<Option<EstadoFabrica>>,
+    /// Hay una instalacion de la fabrica en curso.
+    pub instalando: AtomicBool,
 }
 
 impl Estado {
@@ -62,6 +64,7 @@ impl Estado {
             trabajos: Mutex::new(HashMap::new()),
             audio: Mutex::new(UsoAudio::Libre),
             diagnostico: Mutex::new(None),
+            instalando: AtomicBool::new(false),
         }
     }
 }

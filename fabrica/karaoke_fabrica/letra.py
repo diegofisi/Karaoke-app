@@ -133,7 +133,8 @@ def _pedir(ruta: str, params: dict) -> object:
         r = requests.get(f"{LRCLIB}/{ruta}", params=params, headers={"User-Agent": AGENTE}, timeout=15)
         if r.status_code == 404:
             return None
-        if r.status_code == 429 and intento < 3:
+        # 429: limite por IP; 5xx: servidor caido un momento (visto el 2026-10-16).
+        if (r.status_code == 429 or 500 <= r.status_code < 600) and intento < 3:
             try:
                 espera = float(r.headers.get("retry-after", "0"))
             except ValueError:

@@ -33,12 +33,19 @@ Detalle en `docs/ARQUITECTURA.md`; el contrato entre las partes en
 Precisión medida del tiempo por palabra (JamendoLyrics, canciones no usadas al
 ajustar): el 81,7 % de las palabras empieza a 100 ms o menos de la voz real.
 
-## Requisitos
+## Instalar (usuario)
 
-- Windows 10/11 o macOS 14+ (Apple Silicon).
-- GPU recomendada: NVIDIA con CUDA en Windows; la GPU de Apple (MPS) en Mac.
-- Python 3.12, Node.js 20+, Rust 1.85+, `ffmpeg`.
-- Unos 7 GB para los modelos (se descargan la primera vez).
+Descarga el instalador de la última versión en
+[Releases](https://github.com/diegofisi/Karaoke-app/releases): el `.exe` de
+Windows o el `.dmg` de Mac (Apple Silicon). **No hace falta instalar nada más**:
+
+- ffmpeg, Deno y uv van dentro de la app.
+- La primera vez, la app comprueba lo necesario y ofrece **«Instalar la
+  fábrica»**: descarga sola Python 3.12, PyTorch (con CUDA si hay NVIDIA; MPS
+  en Mac) y los modelos de IA, unos 13 GB en total.
+- Requisitos del equipo: Windows 10/11 o macOS 14+ con Apple Silicon. Una GPU
+  NVIDIA (o un Mac M1-M4) hace que procesar una canción tarde 1-3 minutos; sin
+  GPU funciona, pero mucho más lento.
 
 ## Instalar y ejecutar (desarrollo)
 
@@ -61,9 +68,6 @@ Generar el ejecutable y el instalador de Windows: `npm run tauri build`
 
 ## Limitaciones
 
-- El ejecutable usa la fábrica Python de esta carpeta (`fabrica/.venv`), así
-  que hoy funciona en el equipo donde se instaló el entorno. Empaquetar Python
-  dentro de la app es la fase 5 (`docs/ARQUITECTURA.md`).
 - Uso personal: algunos modelos tienen licencia no comercial (registro en
   `.claude/skills/fabrica/references/project.md`). El texto de las letras
   tiene copyright de sus autores.

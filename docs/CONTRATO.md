@@ -102,6 +102,7 @@ Ejecución:
 python -m karaoke_fabrica procesar --url <url> --salida <carpeta> [--idioma es|en|ja] [--letra <archivo.txt|.lrc>]
 python -m karaoke_fabrica procesar --audio <archivo> --titulo <t> --artista <a> --salida <carpeta> [...]
 python -m karaoke_fabrica diagnostico
+python -m karaoke_fabrica preparar     # descarga todos los modelos de antemano
 ```
 
 Cada línea de **stdout** es un objeto JSON. Nada más va a stdout (el registro va
@@ -113,6 +114,7 @@ a stderr y a `fabrica.log`).
 | `"aviso"` | `mensaje` | Algo degradado pero no fatal (sin letra en LRCLIB, línea en respaldo) |
 | `"listo"` | `id`, `ruta` (de `cancion.json`) | Fin con éxito |
 | `"error"` | `mensaje` (español), `etapa` | Fin con fallo. Código de salida ≠ 0 |
+| `"preparar"` | `paso` (`separador`, `reconocedor`, `alineador`, `mms`), `avance`, `mensaje` | Solo en `preparar`; al final, `listo` con `id` y `ruta` vacíos |
 
 `etapa` ∈ `descarga`, `separacion`, `letra`, `alineacion`, `tono`, `notas`,
 `guardado`.
@@ -137,6 +139,7 @@ argumentos se escriben en `snake_case` también en TypeScript
 | `borrar_cancion` | `id: string` | `null` |
 | `procesar_cancion` | `peticion: PeticionProceso`, `canal: Channel<EventoFabrica>` | `string` (id de la canción). Vuelve en cuanto el proceso arranca; el resto llega por el canal |
 | `cancelar_proceso` | `id: string` | `null` |
+| `instalar_fabrica` | `canal: Channel<EventoInstalacion>` | `null`. Instala con `uv` (empaquetado) Python 3.12, PyTorch (CUDA, CPU o MPS), la fábrica y los modelos en `<datos>/entorno/`. Tarda minutos |
 | `listar_microfonos` | — | `Microfono[]` |
 | `obtener_ajustes` | — | `Ajustes` |
 | `guardar_ajustes` | `ajustes: Ajustes` | `Ajustes` |
@@ -155,7 +158,12 @@ argumentos se escriben en `snake_case` también en TypeScript
 ### Tipos
 
 ```ts
-EstadoFabrica   { lista: boolean, python: string | null, cuda: boolean, gpu: string | null, mensaje: string | null }
+EstadoFabrica   { lista: boolean,   // todos los requisitos obligatorios en verde
+                  python: string | null, cuda: boolean, gpu: string | null, mensaje: string | null,
+                  requisitos: Requisito[], puede_instalar: boolean }
+Requisito       { id: "fabrica" | "ffmpeg" | "javascript" | "gpu", nombre: string, ok: boolean,
+                  obligatorio: boolean,   // gpu: false (solo avisa)
+                  detalle: string }
 ResumenCancion  { id, titulo, artista, duracion: number, idioma: "es"|"en"|"ja",
                   lineas_respaldo: number, lineas_total: number, record: number | null }
 PeticionProceso { url: string | null, archivo: string | null, titulo: string | null, artista: string | null,
@@ -197,6 +205,10 @@ sola llamada y se cierra con ella.
 `listo`, `error`), más `{ tipo: "cancelado" }` si se canceló. Tras `listo`,
 `error` o `cancelado` no llega nada más.
 
+**`EventoInstalacion`**: `{ tipo: "paso", indice, total, nombre, mensaje }` al
+empezar cada paso (`python`, `entorno`, `pytorch`, `fabrica`, `modelos`) y
+`{ tipo: "linea", texto }` con la salida de cada paso.
+
 **`EventoCalibracion`**: `{ tipo: "pitido", indice: number, total: number }`
 cuando suena cada pitido y `{ tipo: "medida", indice: number, ms: number | null }`
 al detectarlo (o no).
@@ -229,3 +241,15 @@ su propio reloj. En modo `practica` no hay puntuación: `puntos` y `combo` van a
 - La calibración mide exactamente esa ida y vuelta (pitido por la misma salida,
   detección en la misma entrada, misma fórmula), por eso corrige todo el
   camino: búfer de salida, altavoz, aire, micrófono, búfer de entrada.
+
+## 8. Herramientas y entorno de la fábrica
+
+- **Empaquetadas con la app** (sidecars de Tauri, junto al ejecutable):
+  ffmpeg, deno (runtime de JavaScript que exige YouTube) y uv. Las baja
+  `scripts/descargar-binarios.mjs` con versión fijada y SHA-256 verificado.
+  Si no están, se buscan en el PATH (y en Homebrew en macOS).
+- **Python de la fábrica**, en este orden: `KARAOKE_PYTHON` > `ajustes.carpeta_fabrica`
+  > entorno instalado por la app (`<datos>/entorno/venv`, con `listo.json`)
+  > repositorio de desarrollo.
+- Los procesos de la fábrica reciben un PATH con la carpeta de las
+  herramientas empaquetadas primero.

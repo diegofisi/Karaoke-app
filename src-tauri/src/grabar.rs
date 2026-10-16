@@ -4,7 +4,7 @@
 //! falla, se queda en WAV: la grabacion no se pierde.
 
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::process::{Command, Stdio};
 
 use audio::{GrabacionVoz, escribir_wav, leer_wav, mezclar};
@@ -49,24 +49,6 @@ fn nombre_libre(carpeta: &Path, base: &str) -> String {
         .map(|n| format!("{base} ({n})"))
         .find(|n| libre(n))
         .unwrap_or_else(|| format!("{base} ({})", std::process::id()))
-}
-
-/// ffmpeg en el PATH o, en macOS, en las carpetas de Homebrew: una app abierta
-/// desde el Finder no hereda el PATH de la terminal.
-fn buscar_ffmpeg() -> Option<PathBuf> {
-    let ejecutable = if cfg!(windows) {
-        "ffmpeg.exe"
-    } else {
-        "ffmpeg"
-    };
-    let mut carpetas: Vec<PathBuf> = std::env::var_os("PATH")
-        .map(|p| std::env::split_paths(&p).collect())
-        .unwrap_or_default();
-    carpetas.extend(["/opt/homebrew/bin", "/usr/local/bin"].map(PathBuf::from));
-    carpetas
-        .into_iter()
-        .map(|c| c.join(ejecutable))
-        .find(|p| p.is_file())
 }
 
 /// Convierte a MP3. Si falla, borra el MP3 a medias.
@@ -124,7 +106,7 @@ pub fn guardar(d: &Datos<'_>, voz: &GrabacionVoz) -> Result<(Grabacion, Option<S
     drop(mezcla);
 
     let mp3 = d.carpeta_grabaciones.join(format!("{nombre}.mp3"));
-    let (audio, aviso) = match buscar_ffmpeg() {
+    let (audio, aviso) = match crate::herramientas::buscar("ffmpeg") {
         Some(ffmpeg) if a_mp3(&ffmpeg, &wav, &mp3) => {
             let _ = fs::remove_file(&wav);
             (mp3, None)

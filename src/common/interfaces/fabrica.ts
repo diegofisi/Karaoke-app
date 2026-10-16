@@ -3,12 +3,31 @@
 import type { Idioma } from "./cancion";
 
 export interface EstadoFabrica {
+  /** Todos los requisitos obligatorios en verde: se puede procesar. */
   lista: boolean;
   python: string | null;
   cuda: boolean;
   gpu: string | null;
   mensaje: string | null;
+  requisitos: Requisito[];
+  /** La app puede instalar la fábrica sola. */
+  puede_instalar: boolean;
 }
+
+/** Una comprobación previa a procesar (CONTRATO.md §5). */
+export interface Requisito {
+  id: "fabrica" | "ffmpeg" | "javascript" | "gpu";
+  nombre: string;
+  ok: boolean;
+  /** `false` = solo avisa (la GPU). */
+  obligatorio: boolean;
+  detalle: string;
+}
+
+/** Progreso de `instalar_fabrica` (CONTRATO.md §6). */
+export type EventoInstalacion =
+  | { tipo: "paso"; indice: number; total: number; nombre: string; mensaje: string }
+  | { tipo: "linea"; texto: string };
 
 /** Argumento `peticion` de `procesar_cancion`. `letra`: texto pegado (.txt o LRC). */
 export interface PeticionProceso {

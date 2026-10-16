@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any, TextIO
 
 ETAPAS = ("descarga", "separacion", "letra", "alineacion", "tono", "notas", "guardado")
+# "preparar" (descarga de modelos) usa su propio evento; ver preparar.py.
 
 _salida: TextIO = sys.stdout
 etapa_actual = "descarga"

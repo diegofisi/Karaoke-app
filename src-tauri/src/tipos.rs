@@ -9,11 +9,30 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub struct EstadoFabrica {
+    /// Todos los requisitos obligatorios estan en verde: se puede procesar.
     pub lista: bool,
     pub python: Option<String>,
     pub cuda: bool,
     pub gpu: Option<String>,
     pub mensaje: Option<String>,
+    /// Lo que se comprueba antes de procesar (CONTRATO seccion 5).
+    pub requisitos: Vec<Requisito>,
+    /// La app puede instalar la fabrica sola (lleva uv dentro).
+    pub puede_instalar: bool,
+}
+
+/// Una comprobacion previa a procesar canciones.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub struct Requisito {
+    /// "fabrica" | "ffmpeg" | "javascript" | "gpu"
+    pub id: String,
+    pub nombre: String,
+    pub ok: bool,
+    /// Si es false, solo avisa (la GPU: sin ella funciona, pero lento).
+    pub obligatorio: bool,
+    /// Que se encontro, o que falta y como resolverlo.
+    pub detalle: String,
 }
 
 #[derive(Debug, Clone, Deserialize)]

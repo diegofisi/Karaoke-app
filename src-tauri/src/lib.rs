@@ -2,9 +2,11 @@
 //! CONTRATO seccion 5. Sin logica de dominio aqui.
 
 mod comandos;
+pub mod entorno;
 mod estado;
 mod fabrica;
 mod grabar;
+pub mod herramientas;
 mod juego;
 mod tipos;
 
@@ -36,6 +38,7 @@ pub fn run() {
             comandos::canciones::borrar_cancion,
             comandos::fabrica::procesar_cancion,
             comandos::fabrica::cancelar_proceso,
+            comandos::fabrica::instalar_fabrica,
             comandos::ajustes::listar_microfonos,
             comandos::ajustes::obtener_ajustes,
             comandos::ajustes::guardar_ajustes,

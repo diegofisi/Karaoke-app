@@ -10,6 +10,7 @@ import type {
   EstadoFabrica,
   EventoCalibracion,
   EventoFabrica,
+  EventoInstalacion,
   FinPartida,
   FrameJuego,
   Grabacion,
@@ -36,6 +37,13 @@ export const procesarCancion = (
   const canal = new Channel<EventoFabrica>();
   canal.onmessage = alEvento;
   return invoke<string>("procesar_cancion", { peticion, canal });
+};
+
+/** Instala la fábrica (Python, PyTorch, modelos). Tarda minutos; el progreso llega por `alEvento`. */
+export const instalarFabrica = (alEvento: (evento: EventoInstalacion) => void): Promise<null> => {
+  const canal = new Channel<EventoInstalacion>();
+  canal.onmessage = alEvento;
+  return invoke<null>("instalar_fabrica", { canal });
 };
 
 export const cancelarProceso = (id: string): Promise<null> => invoke<null>("cancelar_proceso", { id });

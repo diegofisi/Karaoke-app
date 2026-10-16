@@ -12,15 +12,18 @@ use std::sync::{Arc, OnceLock};
 use regex::Regex;
 use serde_json::{Value, json};
 
+use crate::entorno;
+use crate::herramientas;
 use crate::tipos::{EstadoFabrica, PeticionProceso};
 
-/// Python del venv de la fabrica: `<fabrica>/.venv`. `KARAOKE_PYTHON` lo
-/// sustituye. El empaquetado (fase 5) cambiara esto.
-pub fn ruta_python(elegida: Option<&Path>) -> PathBuf {
-    if let Some(ruta) = std::env::var_os("KARAOKE_PYTHON") {
-        return PathBuf::from(ruta);
-    }
-    let venv = carpeta_fabrica(elegida).join(".venv");
+/// Donde esta el Python de la fabrica y desde que carpeta se lanza.
+#[derive(Debug, Clone)]
+pub struct Ubicacion {
+    pub python: PathBuf,
+    pub carpeta: PathBuf,
+}
+
+pub fn python_de_venv(venv: &Path) -> PathBuf {
     if cfg!(windows) {
         venv.join("Scripts").join("python.exe")
     } else {
@@ -28,17 +31,52 @@ pub fn ruta_python(elegida: Option<&Path>) -> PathBuf {
     }
 }
 
-/// Carpeta de la fabrica. `elegida` (Ajustes) puede ser la del repositorio o
-/// la propia `fabrica/`. Sin elegir: la del repositorio donde se compilo la
-/// app, que solo existe en el equipo de desarrollo (en un .dmg compilado en
-/// otra maquina hay que elegirla en Ajustes).
-pub fn carpeta_fabrica(elegida: Option<&Path>) -> PathBuf {
-    match elegida {
-        Some(c) if c.join("fabrica").join("karaoke_fabrica").is_dir() => c.join("fabrica"),
-        Some(c) => c.to_path_buf(),
-        None => Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("..")
-            .join("fabrica"),
+/// Carpeta de la fabrica elegida en Ajustes: la del repositorio o la propia `fabrica/`.
+fn carpeta_fabrica(elegida: &Path) -> PathBuf {
+    if elegida.join("fabrica").join("karaoke_fabrica").is_dir() {
+        elegida.join("fabrica")
+    } else {
+        elegida.to_path_buf()
+    }
+}
+
+/// Orden: `KARAOKE_PYTHON` > carpeta elegida en Ajustes > entorno que instala
+/// la app (`<datos>/entorno`) > repositorio de desarrollo. Si no hay ninguno,
+/// devuelve el del entorno de la app (aun sin instalar): el diagnostico dira
+/// que falta y la interfaz ofrecera instalarlo.
+pub fn ubicar(elegida: Option<&Path>, datos: &Path) -> Ubicacion {
+    if let Some(ruta) = std::env::var_os("KARAOKE_PYTHON") {
+        return Ubicacion {
+            python: PathBuf::from(ruta),
+            carpeta: datos.to_path_buf(),
+        };
+    }
+    if let Some(c) = elegida {
+        let fabrica = carpeta_fabrica(c);
+        return Ubicacion {
+            python: python_de_venv(&fabrica.join(".venv")),
+            carpeta: fabrica,
+        };
+    }
+    if entorno::instalado(datos) {
+        return Ubicacion {
+            python: entorno::python(datos),
+            carpeta: datos.to_path_buf(),
+        };
+    }
+    let desarrollo = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("..")
+        .join("fabrica");
+    let python_desarrollo = python_de_venv(&desarrollo.join(".venv"));
+    if python_desarrollo.is_file() {
+        return Ubicacion {
+            python: python_desarrollo,
+            carpeta: desarrollo,
+        };
+    }
+    Ubicacion {
+        python: entorno::python(datos),
+        carpeta: datos.to_path_buf(),
     }
 }
 
@@ -101,9 +139,11 @@ pub fn argumentos(p: &PeticionProceso, salida: &Path, letra: Option<&Path>) -> V
     a
 }
 
-fn comando_python(fabrica: Option<&Path>) -> Command {
-    let mut c = Command::new(ruta_python(fabrica));
-    c.current_dir(carpeta_fabrica(fabrica))
+fn comando_python(u: &Ubicacion) -> Command {
+    let mut c = Command::new(&u.python);
+    c.current_dir(&u.carpeta)
+        // Herramientas empaquetadas primero: yt-dlp encuentra ffmpeg y deno.
+        .env("PATH", herramientas::path_para_procesos())
         // stdout sin buffer y en UTF-8 (la consola de Windows no lo es por defecto).
         .env("PYTHONUNBUFFERED", "1")
         .env("PYTHONIOENCODING", "utf-8")
@@ -113,14 +153,14 @@ fn comando_python(fabrica: Option<&Path>) -> Command {
 }
 
 #[cfg(windows)]
-fn sin_ventana(c: &mut Command) {
+pub(crate) fn sin_ventana(c: &mut Command) {
     use std::os::windows::process::CommandExt;
     const CREATE_NO_WINDOW: u32 = 0x0800_0000;
     c.creation_flags(CREATE_NO_WINDOW);
 }
 
 #[cfg(unix)]
-fn sin_ventana(c: &mut Command) {
+pub(crate) fn sin_ventana(c: &mut Command) {
     use std::os::unix::process::CommandExt;
     // Grupo propio: cancelar mata al proceso y a sus hijos (ffmpeg).
     c.process_group(0);
@@ -146,11 +186,7 @@ pub fn matar(pid: u32) {
 }
 
 /// Arranca la fabrica. Devuelve el proceso con su stdout entubado.
-pub fn arrancar(
-    p: &PeticionProceso,
-    carpeta: &Path,
-    fabrica: Option<&Path>,
-) -> Result<Child, String> {
+pub fn arrancar(p: &PeticionProceso, carpeta: &Path, u: &Ubicacion) -> Result<Child, String> {
     fs::create_dir_all(carpeta)
         .map_err(|e| format!("No se pudo crear la carpeta de la cancion: {e}"))?;
     let letra = match p.letra.as_deref().filter(|l| !l.trim().is_empty()) {
@@ -163,7 +199,7 @@ pub fn arrancar(
     };
     let errores = File::create(carpeta.join("fabrica.stderr.log"))
         .map_err(|e| format!("No se pudo crear el registro de la fabrica: {e}"))?;
-    comando_python(fabrica)
+    comando_python(u)
         .args(argumentos(p, carpeta, letra.as_deref()))
         .stdout(Stdio::piped())
         .stderr(Stdio::from(errores))
@@ -171,7 +207,7 @@ pub fn arrancar(
         .map_err(|e| {
             format!(
                 "No se pudo arrancar la fabrica ({}): {e}. Instala su entorno (fabrica/README.md) o elige su carpeta en Ajustes",
-                ruta_python(fabrica).display()
+                u.python.display()
             )
         })
 }
@@ -213,8 +249,8 @@ pub fn reenviar(
 }
 
 /// `python -m karaoke_fabrica diagnostico`.
-pub fn diagnostico(fabrica: Option<&Path>) -> EstadoFabrica {
-    let salida = comando_python(fabrica)
+pub fn diagnostico(u: &Ubicacion) -> EstadoFabrica {
+    let salida = comando_python(u)
         .args(["-m", "karaoke_fabrica", "diagnostico"])
         .stderr(Stdio::null())
         .output();
@@ -224,13 +260,15 @@ pub fn diagnostico(fabrica: Option<&Path>) -> EstadoFabrica {
         cuda: false,
         gpu: None,
         mensaje: Some(mensaje),
+        requisitos: Vec::new(),
+        puede_instalar: false,
     };
     let salida = match salida {
         Ok(s) => s,
         Err(e) => {
             return sin_python(format!(
                 "No se encontro el Python de la fabrica en {} ({e}). Instala su entorno (fabrica/README.md) o elige su carpeta en Ajustes",
-                ruta_python(fabrica).display()
+                u.python.display()
             ));
         }
     };
@@ -253,6 +291,8 @@ pub fn diagnostico(fabrica: Option<&Path>) -> EstadoFabrica {
         gpu: v.get("gpu").and_then(Value::as_str).map(str::to_string),
         mensaje: (aceleracion == "cpu")
             .then(|| "Sin GPU: procesar una cancion puede tardar mucho.".to_string()),
+        requisitos: Vec::new(),
+        puede_instalar: false,
     }
 }
 

@@ -6,6 +6,7 @@ import type {
   Ajustes,
   EventoCalibracion,
   EventoFabrica,
+  EventoInstalacion,
   FrameJuego,
   Modo,
   PeticionProceso,
@@ -21,6 +22,7 @@ import {
   estadoFabrica,
   fijarVozGuia,
   guardarAjustes,
+  instalarFabrica,
   iniciarJuego,
   listarCanciones,
   listarGrabaciones,
@@ -102,6 +104,15 @@ export const useProcesarCancion = () => {
       }),
     onSuccess: (id, { alArrancar }) => alArrancar(id),
     onError: (error, { alFallar }) => alFallar(error),
+  });
+};
+
+/** Al terminar (bien o mal) se vuelve a comprobar la fábrica. */
+export const useInstalarFabrica = () => {
+  const cliente = useQueryClient();
+  return useMutation({
+    mutationFn: (alEvento: (evento: EventoInstalacion) => void) => instalarFabrica(alEvento),
+    onSettled: () => void cliente.invalidateQueries({ queryKey: CLAVES.estadoFabrica }),
   });
 };
 
