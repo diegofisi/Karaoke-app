@@ -1,8 +1,20 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useCancelarProceso, useEstadoFabrica, useProcesarCancion } from "@/common/api/consultas";
+import {
+  useCancelarProceso,
+  useEstadoFabrica,
+  useIniciarSesionYoutube,
+  useProcesarCancion,
+} from "@/common/api/consultas";
+import { olvidarFalloRenovacion, renovarSesionEnSilencio } from "@/common/api/sesionYoutube";
 import { elegirArchivoAudio } from "@/common/api/dialogo";
-import type { EstadoFabrica, Modo } from "@/common/interfaces";
+import {
+  CodigoErrorFabrica,
+  type EstadoFabrica,
+  type EventoFabrica,
+  type Modo,
+  type PeticionProceso,
+} from "@/common/interfaces";
 import { mensajeDeError } from "@/common/helpers/errores";
 import { rutaJuego } from "@/common/routes/rutas";
 import { estaTerminado, useProcesosStore, type Trabajo } from "@/common/stores/procesos";
@@ -36,6 +48,11 @@ export interface DatosProcesar {
   quitar: (clave: string) => void;
   quitarTerminados: () => void;
   cantar: (idCancion: string, modo: Modo) => void;
+  /** Vuelve a procesar un trabajo con error. */
+  reintentar: (clave: string) => void;
+  /** Abre el inicio de sesión de YouTube; al conectar, reintenta el trabajo. */
+  iniciarSesionYReintentar: (clave: string) => void;
+  errorSesion: string | null;
 }
 
 export const useProcesar = (): DatosProcesar => {
@@ -51,6 +68,51 @@ export const useProcesar = (): DatosProcesar => {
   const fallarArranque = useProcesosStore((estado) => estado.fallarArranque);
   const quitar = useProcesosStore((estado) => estado.quitar);
   const quitarTerminados = useProcesosStore((estado) => estado.quitarTerminados);
+  const reiniciar = useProcesosStore((estado) => estado.reiniciar);
+  const inicioSesion = useIniciarSesionYoutube();
+  const [errorSesion, fijarErrorSesion] = useState<string | null>(null);
+
+  /** Lanza la fábrica para un trabajo ya creado en la cola. */
+  const lanzar = (clave: string, peticion: PeticionProceso) => {
+    const alEvento = (evento: EventoFabrica) => {
+      aplicarEvento(clave, evento);
+      // YouTube rechazó la sesión guardada: se renueva sola y se reintenta UNA vez.
+      if (evento.tipo === "error" && evento.codigo === CodigoErrorFabrica.SesionRechazada) {
+        const trabajo = useProcesosStore.getState().trabajos.find((t) => t.clave === clave);
+        if (trabajo === undefined || trabajo.reintentadoSolo) return;
+        void renovarSesionEnSilencio().then((renovada) => {
+          if (!renovada) return;
+          reiniciar(clave, true);
+          lanzar(clave, peticion);
+        });
+      }
+    };
+    procesar.mutate({
+      peticion,
+      alEvento,
+      alArrancar: (id) => fijarId(clave, id),
+      alFallar: (error) => fallarArranque(clave, mensajeDeError(error)),
+    });
+  };
+
+  const reintentar = (clave: string) => {
+    const trabajo = useProcesosStore.getState().trabajos.find((t) => t.clave === clave);
+    if (trabajo?.peticion == null) return;
+    reiniciar(clave, false);
+    lanzar(clave, trabajo.peticion);
+  };
+
+  const iniciarSesionYReintentar = (clave: string) => {
+    fijarErrorSesion(null);
+    inicioSesion.mutate((evento) => {
+      if (evento.tipo === "conectada") {
+        olvidarFalloRenovacion();
+        reintentar(clave);
+      } else if (evento.tipo === "error") {
+        fijarErrorSesion(evento.mensaje);
+      }
+    }, { onError: (e) => fijarErrorSesion(mensajeDeError(e)) });
+  };
 
   const [formulario, fijarFormulario] = useState<FormularioProceso>(FORMULARIO_VACIO);
   const [intentado, fijarIntentado] = useState(false);
@@ -76,13 +138,9 @@ export const useProcesar = (): DatosProcesar => {
     fijarIntentado(true);
     if (problema !== null || fabricaNoLista) return;
     const clave = nuevaClaveTrabajo();
-    crear(clave, nombreDeTrabajo(formulario));
-    procesar.mutate({
-      peticion: aPeticion(formulario),
-      alEvento: (evento) => aplicarEvento(clave, evento),
-      alArrancar: (id) => fijarId(clave, id),
-      alFallar: (error) => fallarArranque(clave, mensajeDeError(error)),
-    });
+    const peticion = aPeticion(formulario);
+    crear(clave, nombreDeTrabajo(formulario), peticion);
+    lanzar(clave, peticion);
     fijarIntentado(false);
     fijarFormulario((anterior) => ({ ...FORMULARIO_VACIO, origen: anterior.origen, idioma: anterior.idioma }));
   };
@@ -110,5 +168,8 @@ export const useProcesar = (): DatosProcesar => {
     quitar,
     quitarTerminados,
     cantar: (idCancion, modo) => void navegar(rutaJuego(idCancion, modo)),
+    reintentar,
+    iniciarSesionYReintentar,
+    errorSesion,
   };
 };

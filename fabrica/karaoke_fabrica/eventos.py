@@ -70,9 +70,12 @@ def aviso(mensaje: str) -> None:
 
 
 class ErrorFabrica(Exception):
-    """Error con mensaje en espanol para el usuario y la etapa donde paso."""
+    """Error con mensaje en espanol para el usuario y la etapa donde paso.
+    `codigo` (opcional) dice a la interfaz que puede hacer: "bloqueo_youtube"
+    (YouTube pide sesion y no hay) o "sesion_rechazada" (la hay pero la rechaza)."""
 
-    def __init__(self, etapa: str, mensaje: str) -> None:
+    def __init__(self, etapa: str, mensaje: str, codigo: str | None = None) -> None:
         super().__init__(mensaje)
         self.etapa = etapa
         self.mensaje = mensaje
+        self.codigo = codigo

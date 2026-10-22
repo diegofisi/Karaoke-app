@@ -3,7 +3,13 @@
 // aunque la pantalla Procesar no esté montada).
 
 import { create } from "zustand";
-import { ETAPAS_ORDENADAS, type Etapa, type EventoFabrica } from "@/common/interfaces";
+import {
+  ETAPAS_ORDENADAS,
+  type CodigoErrorFabrica,
+  type Etapa,
+  type EventoFabrica,
+  type PeticionProceso,
+} from "@/common/interfaces";
 
 export const EstadoTrabajo = {
   Arrancando: "arrancando",
@@ -30,6 +36,12 @@ export interface Trabajo {
   avisos: string[];
   error: string | null;
   etapaError: Etapa | null;
+  /** Qué se puede hacer con el error (iniciar o renovar la sesión de YouTube). */
+  codigoError: CodigoErrorFabrica | null;
+  /** Para reintentar sin volver a rellenar el formulario. */
+  peticion: PeticionProceso | null;
+  /** Ya se reintentó solo tras renovar la sesión: no se repite en bucle. */
+  reintentadoSolo: boolean;
 }
 
 interface ProcesosState {
@@ -37,7 +49,9 @@ interface ProcesosState {
 }
 
 interface ProcesosActions {
-  crear: (clave: string, nombre: string) => void;
+  crear: (clave: string, nombre: string, peticion: PeticionProceso) => void;
+  /** Vuelve a empezar un trabajo terminado con error (misma petición). */
+  reiniciar: (clave: string, solo: boolean) => void;
   fijarId: (clave: string, idCancion: string) => void;
   aplicarEvento: (clave: string, evento: EventoFabrica) => void;
   fallarArranque: (clave: string, mensaje: string) => void;
@@ -91,6 +105,7 @@ const siguienteTrabajo = (trabajo: Trabajo, evento: EventoFabrica): Trabajo => {
         estado: EstadoTrabajo.Error,
         error: evento.mensaje,
         etapaError: aEtapa(evento.etapa) ?? trabajo.etapaActual,
+        codigoError: evento.codigo ?? null,
       };
     case "cancelado":
       return { ...trabajo, estado: EstadoTrabajo.Cancelado };
@@ -102,7 +117,7 @@ const actualizar = (trabajos: Trabajo[], clave: string, cambio: (trabajo: Trabaj
 
 export const useProcesosStore = create<ProcesosState & ProcesosActions>((set) => ({
   ...estadoInicial,
-  crear: (clave, nombre) =>
+  crear: (clave, nombre, peticion) =>
     set((estado) => ({
       trabajos: [
         {
@@ -115,9 +130,26 @@ export const useProcesosStore = create<ProcesosState & ProcesosActions>((set) =>
           avisos: [],
           error: null,
           etapaError: null,
+          codigoError: null,
+          peticion,
+          reintentadoSolo: false,
         },
         ...estado.trabajos,
       ],
+    })),
+  reiniciar: (clave, solo) =>
+    set((estado) => ({
+      trabajos: actualizar(estado.trabajos, clave, (trabajo) => ({
+        ...trabajo,
+        estado: EstadoTrabajo.Arrancando,
+        etapaActual: null,
+        etapas: {},
+        avisos: [],
+        error: null,
+        etapaError: null,
+        codigoError: null,
+        reintentadoSolo: trabajo.reintentadoSolo || solo,
+      })),
     })),
   fijarId: (clave, idCancion) =>
     set((estado) => ({ trabajos: actualizar(estado.trabajos, clave, (trabajo) => ({ ...trabajo, idCancion })) })),

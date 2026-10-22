@@ -6,3 +6,4 @@ pub mod canciones;
 pub mod fabrica;
 pub mod grabaciones;
 pub mod juego;
+pub mod youtube;

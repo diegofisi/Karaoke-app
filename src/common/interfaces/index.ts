@@ -4,3 +4,4 @@ export * from "./fabrica";
 export * from "./ajustes";
 export * from "./juego";
 export * from "./grabaciones";
+export * from "./youtube";

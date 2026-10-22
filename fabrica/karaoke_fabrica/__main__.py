@@ -65,7 +65,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         cid, ruta = procesar(peticion)
     except ErrorFabrica as e:
-        emitir("error", etapa=e.etapa, mensaje=e.mensaje)
+        emitir("error", etapa=e.etapa, mensaje=e.mensaje, **({"codigo": e.codigo} if e.codigo else {}))
         return 1
     except Exception as e:  # cualquier fallo inesperado sale como evento, nunca como traza en stdout
         traceback.print_exc(file=sys.stderr)

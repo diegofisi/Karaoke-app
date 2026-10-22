@@ -108,7 +108,7 @@ AYUDA_BLOQUEO = (
     "YouTube pide confirmar que no eres un bot y bloquea la descarga desde esta conexion. "
     "Suele ser temporal (pasa tras muchas descargas seguidas). Soluciones: "
     "1) espera un rato y vuelve a intentarlo; "
-    "2) en Ajustes > YouTube, da tu sesion de YouTube (archivo cookies.txt, o el navegador); "
+    "2) en Ajustes > YouTube, inicia sesion con tu cuenta de YouTube; "
     "3) procesa la cancion desde un archivo de audio (pestana \"Archivo local\")."
 )
 
@@ -116,6 +116,16 @@ AYUDA_BLOQUEO = (
 def es_bloqueo_bot(error: Exception | str) -> bool:
     texto = str(error).lower()
     return "not a bot" in texto or "sign in to confirm" in texto
+
+
+def es_sesion_rechazada(error: Exception | str) -> bool:
+    return "cookies are no longer valid" in str(error).lower()
+
+
+CODIGO_BLOQUEO = "bloqueo_youtube"
+CODIGO_RECHAZO = "sesion_rechazada"
+MENSAJE_RECHAZO = ("YouTube rechazo tu sesion (caducada o cerrada en otro sitio). "
+                   "Vuelve a iniciar sesion en Ajustes > YouTube, o procesa la cancion desde un archivo de audio.")
 
 
 def opciones_base(js: dict, sesion: SesionYoutube) -> dict:
@@ -147,9 +157,25 @@ def _error_de_sesion(e: Exception, sesion: SesionYoutube) -> str | None:
 
 
 def descargar(url: str, carpeta: Path, sesion: SesionYoutube | None = None) -> Metadatos:
+    """yt-dlp reescribe el archivo de cookies al terminar: recibe una copia
+    propia de esta ejecucion, que se borra al acabar (asi nunca pisa una sesion
+    recien renovada; idea de youtube-downloader)."""
+    sesion = sesion or SesionYoutube()
+    if sesion.cookies is None or not sesion.cookies.is_file():
+        return _descargar(url, carpeta, sesion)
+    import shutil
+
+    copia = carpeta / "cookies-ejecucion.txt"  # mismo nombre que youtube::COPIA_EJECUCION (Rust la limpia al arrancar)
+    shutil.copyfile(sesion.cookies, copia)
+    try:
+        return _descargar(url, carpeta, SesionYoutube(cookies=copia, navegador=sesion.navegador))
+    finally:
+        copia.unlink(missing_ok=True)
+
+
+def _descargar(url: str, carpeta: Path, sesion: SesionYoutube) -> Metadatos:
     import yt_dlp
 
-    sesion = sesion or SesionYoutube()
     vid = id_youtube(url)
     destino = carpeta / "original.wav"
     url_limpia = f"https://www.youtube.com/watch?v={vid}"
@@ -168,6 +194,8 @@ def descargar(url: str, carpeta: Path, sesion: SesionYoutube | None = None) -> M
             mensaje_sesion = _error_de_sesion(e, sesion)
             if mensaje_sesion:
                 raise ErrorFabrica("descarga", mensaje_sesion) from e
+            if sesion.activa and es_sesion_rechazada(e):
+                raise ErrorFabrica("descarga", MENSAJE_RECHAZO, CODIGO_RECHAZO) from e
             if not es_bloqueo_bot(e):
                 raise ErrorFabrica("descarga", f"No se pudo leer el video: {e}") from e
             if intento < REINTENTOS_BLOQUEO:
@@ -178,9 +206,9 @@ def descargar(url: str, carpeta: Path, sesion: SesionYoutube | None = None) -> M
     if info is None:
         if sesion.activa:
             raise ErrorFabrica("descarga", "YouTube sigue bloqueando la descarga aun con tu sesion. "
-                               "Comprueba que la sesion es reciente (vuelve a exportar cookies.txt con YouTube "
-                               "abierto y la sesion iniciada) o procesa la cancion desde un archivo de audio.") from ultimo
-        raise ErrorFabrica("descarga", AYUDA_BLOQUEO) from ultimo
+                               "Vuelve a iniciar sesion en Ajustes > YouTube, o procesa la cancion "
+                               "desde un archivo de audio.", CODIGO_RECHAZO) from ultimo
+        raise ErrorFabrica("descarga", AYUDA_BLOQUEO, CODIGO_BLOQUEO) from ultimo
 
     duracion = float(info.get("duration") or 0)
     if duracion > DURACION_MAXIMA:
@@ -206,7 +234,8 @@ def descargar(url: str, carpeta: Path, sesion: SesionYoutube | None = None) -> M
             ydl.download([url_limpia])
     except Exception as e:
         if es_bloqueo_bot(e):
-            raise ErrorFabrica("descarga", AYUDA_BLOQUEO) from e
+            codigo = CODIGO_RECHAZO if sesion.activa else CODIGO_BLOQUEO
+            raise ErrorFabrica("descarga", MENSAJE_RECHAZO if sesion.activa else AYUDA_BLOQUEO, codigo) from e
         raise ErrorFabrica("descarga", f"No se pudo descargar el audio: {e}") from e
 
     bajados = [p for p in carpeta.glob("descarga.*") if p.suffix not in (".part", ".ytdl")]

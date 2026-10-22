@@ -9,6 +9,8 @@ import CloseIcon from "@mui/icons-material/Close";
 import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
 import SchoolIcon from "@mui/icons-material/School";
 import StopCircleIcon from "@mui/icons-material/StopCircle";
+import ReplayIcon from "@mui/icons-material/Replay";
+import LoginIcon from "@mui/icons-material/Login";
 import { Modo } from "@/common/interfaces";
 import { EstadoTrabajo, estaTerminado, type Trabajo } from "@/common/stores/procesos";
 import { NOMBRE_ETAPA } from "../helpers/formulario";
@@ -20,6 +22,10 @@ export interface TarjetaTrabajoProps {
   onCancelar: (idCancion: string) => void;
   onQuitar: (clave: string) => void;
   onCantar: (idCancion: string, modo: Modo) => void;
+  onReintentar: (clave: string) => void;
+  /** Abre el inicio de sesión de YouTube y, al conectar, reintenta. */
+  onIniciarSesion: (clave: string) => void;
+  errorSesion: string | null;
 }
 
 const ETIQUETA_ESTADO: Record<EstadoTrabajo, { texto: string; color: "default" | "primary" | "success" | "error" }> = {
@@ -30,7 +36,17 @@ const ETIQUETA_ESTADO: Record<EstadoTrabajo, { texto: string; color: "default" |
   [EstadoTrabajo.Cancelado]: { texto: "Cancelada", color: "default" },
 };
 
-export const TarjetaTrabajo = ({ trabajo, cancelando, onCancelar, onQuitar, onCantar }: TarjetaTrabajoProps) => {
+export const TarjetaTrabajo = ({
+  trabajo,
+  cancelando,
+  onCancelar,
+  onQuitar,
+  onCantar,
+  onReintentar,
+  onIniciarSesion,
+  errorSesion,
+}: TarjetaTrabajoProps) => {
+  const errorDeYoutube = trabajo.estado === EstadoTrabajo.Error && trabajo.codigoError !== null;
   const etiqueta = ETIQUETA_ESTADO[trabajo.estado];
   const terminado = estaTerminado(trabajo.estado);
   const idCancion = trabajo.idCancion;
@@ -72,6 +88,7 @@ export const TarjetaTrabajo = ({ trabajo, cancelando, onCancelar, onQuitar, onCa
               {trabajo.error}
             </Alert>
           )}
+          {errorDeYoutube && errorSesion !== null && <Alert severity="warning">{errorSesion}</Alert>}
 
           <Stack direction="row" spacing={1.5} useFlexGap sx={{ flexWrap: "wrap" }}>
             {trabajo.estado === EstadoTrabajo.Listo && idCancion !== null && (
@@ -99,6 +116,16 @@ export const TarjetaTrabajo = ({ trabajo, cancelando, onCancelar, onQuitar, onCa
                 }}
               >
                 {cancelando ? "Cancelando…" : "Cancelar"}
+              </Button>
+            )}
+            {errorDeYoutube && (
+              <Button variant="contained" startIcon={<LoginIcon />} onClick={() => onIniciarSesion(trabajo.clave)}>
+                Iniciar sesión en YouTube
+              </Button>
+            )}
+            {trabajo.estado === EstadoTrabajo.Error && trabajo.peticion !== null && (
+              <Button variant="outlined" startIcon={<ReplayIcon />} onClick={() => onReintentar(trabajo.clave)}>
+                Reintentar
               </Button>
             )}
             {terminado && (

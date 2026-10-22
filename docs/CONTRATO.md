@@ -115,7 +115,7 @@ a stderr y a `fabrica.log`).
 | `"etapa"` | `etapa`, `avance` (0–1), `mensaje` | Al empezar cada etapa y al avanzar |
 | `"aviso"` | `mensaje` | Algo degradado pero no fatal (sin letra en LRCLIB, línea en respaldo) |
 | `"listo"` | `id`, `ruta` (de `cancion.json`) | Fin con éxito |
-| `"error"` | `mensaje` (español), `etapa` | Fin con fallo. Código de salida ≠ 0 |
+| `"error"` | `mensaje` (español), `etapa`, `codigo` opcional: `bloqueo_youtube` (YouTube pide sesión y no hay) o `sesion_rechazada` (la hay y la rechaza) | Fin con fallo. Código de salida ≠ 0 |
 | `"preparar"` | `paso` (`separador`, `reconocedor`, `alineador`, `mms`), `avance`, `mensaje` | Solo en `preparar`; al final, `listo` con `id` y `ruta` vacíos |
 
 `etapa` ∈ `descarga`, `separacion`, `letra`, `alineacion`, `tono`, `notas`,
@@ -158,6 +158,11 @@ argumentos se escriben en `snake_case` también en TypeScript
 | `abrir_grabacion` | `ruta: string` | `null`. La abre con el reproductor del sistema |
 | `mostrar_grabacion` | `ruta: string` | `null`. La muestra en el Explorador (Windows) o el Finder (Mac) |
 | `borrar_grabacion` | `ruta: string` | `null`. Solo acepta rutas dentro de la carpeta de grabaciones |
+| `estado_sesion_youtube` | — | `EstadoSesion` |
+| `cuenta_youtube` | — | `CuentaYoutube \| null` (consulta a YouTube; `null` sin sesión) |
+| `iniciar_sesion_youtube` | `canal: Channel<EventoSesion>` | `null`. Abre la ventana de inicio de sesión de Google; se cierra sola al llegar a YouTube con sesión y guarda `<datos>/youtube/cookies.txt` |
+| `renovar_sesion_youtube` | — | `boolean`. Ventana oculta (≤20 s); `true` si guardó una sesión válida |
+| `cerrar_sesion_youtube` | — | `null`. Borra `cookies.txt` |
 
 ### Tipos
 
@@ -187,6 +192,8 @@ Ajustes         { microfono: string | null, latencia_ms: number, dificultad: Dif
 ResultadoCalibracion { latencia_ms: number, medidas_ms: number[], fiable: boolean }
 ResultadoJuego  { puntos: number, nivel: Nivel, mejor_combo: number, precision_media: number,
                   por_calificacion: { perfecta, bien, regular, fallo }, record_anterior: number | null, es_record: boolean }
+EstadoSesion    = "conectada" | "caducada" | "ninguna"
+CuentaYoutube   { nombre: string, usuario: string | null, foto: string | null }   // foto: data URL
 Nivel           = "desafinado" | "aficionado" | "prometedor" | "cantante" | "estrella" | "leyenda"
 FinPartida      { resultado: ResultadoJuego | null,   // null en practica
                   grabacion: Grabacion | null, error_grabacion: string | null }
@@ -215,6 +222,9 @@ sola llamada y se cierra con ella.
 **`EventoInstalacion`**: `{ tipo: "paso", indice, total, nombre, mensaje }` al
 empezar cada paso (`python`, `entorno`, `pytorch`, `fabrica`, `modelos`) y
 `{ tipo: "linea", texto }` con la salida de cada paso.
+
+**`EventoSesion`**: `{ tipo: "conectada" }` (cookies guardadas),
+`{ tipo: "cerrada" }` (el usuario cerró la ventana) o `{ tipo: "error", mensaje }`.
 
 **`EventoCalibracion`**: `{ tipo: "pitido", indice: number, total: number }`
 cuando suena cada pitido y `{ tipo: "medida", indice: number, ms: number | null }`
@@ -260,3 +270,9 @@ su propio reloj. En modo `practica` no hay puntuación: `puntos` y `combo` van a
   > repositorio de desarrollo.
 - Los procesos de la fábrica reciben un PATH con la carpeta de las
   herramientas empaquetadas primero.
+- **Sesión de YouTube** para yt-dlp, en este orden: `ajustes.youtube_cookies`
+  (archivo elegido a mano) > `<datos>/youtube/cookies.txt` (sesión iniciada en
+  la app) > `ajustes.youtube_navegador`. La fábrica usa una copia por ejecución
+  (yt-dlp reescribe el archivo al terminar) y la borra al acabar. Si YouTube
+  rechaza la sesión (`codigo: "sesion_rechazada"`), la interfaz la renueva en
+  silencio y reintenta una vez.

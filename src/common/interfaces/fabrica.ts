@@ -87,6 +87,8 @@ export interface EventoFabricaError {
   tipo: "error";
   mensaje: string;
   etapa: string;
+  /** Qué puede hacer la interfaz: iniciar sesión o renovarla. Ver CONTRATO.md §4. */
+  codigo?: "bloqueo_youtube" | "sesion_rechazada";
 }
 
 export interface EventoFabricaCancelado {

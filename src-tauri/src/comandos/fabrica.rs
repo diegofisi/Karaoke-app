@@ -222,8 +222,15 @@ pub fn procesar_cancion(
     };
     let sesion = {
         let a = candado(&estado.ajustes)?;
+        // Orden: cookies.txt elegido a mano > sesion iniciada en la app > navegador.
+        let de_la_app = crate::youtube::ruta_cookies(estado.biblioteca.datos());
+        let cookies = a.youtube_cookies.clone().or_else(|| {
+            de_la_app
+                .is_file()
+                .then(|| de_la_app.to_string_lossy().into_owned())
+        });
         fabrica::SesionYoutube {
-            cookies: a.youtube_cookies.clone(),
+            cookies,
             navegador: a.youtube_navegador.clone(),
         }
     };

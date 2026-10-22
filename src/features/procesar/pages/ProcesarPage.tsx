@@ -72,6 +72,9 @@ export const ProcesarPage = () => {
               onCancelar={procesar.cancelar}
               onQuitar={procesar.quitar}
               onCantar={procesar.cantar}
+              onReintentar={procesar.reintentar}
+              onIniciarSesion={procesar.iniciarSesionYReintentar}
+              errorSesion={procesar.errorSesion}
             />
           ))}
         </Stack>

@@ -7,6 +7,7 @@ import type {
   EventoCalibracion,
   EventoFabrica,
   EventoInstalacion,
+  EventoSesion,
   FrameJuego,
   Modo,
   PeticionProceso,
@@ -15,6 +16,10 @@ import {
   abrirGrabacion,
   borrarCancion,
   borrarGrabacion,
+  cerrarSesionYoutube,
+  cuentaYoutube,
+  estadoSesionYoutube,
+  iniciarSesionYoutube,
   buscarJuego,
   calibrarLatencia,
   cancelarProceso,
@@ -42,6 +47,8 @@ export const CLAVES = {
   microfonos: ["microfonos"] as const,
   ajustes: ["ajustes"] as const,
   grabaciones: ["grabaciones"] as const,
+  sesionYoutube: ["sesion-youtube"] as const,
+  cuentaYoutube: ["sesion-youtube", "cuenta"] as const,
 };
 
 // --- Consultas ---
@@ -63,6 +70,35 @@ export const useMicrofonos = () => useQuery({ queryKey: CLAVES.microfonos, query
 export const useAjustes = () => useQuery({ queryKey: CLAVES.ajustes, queryFn: obtenerAjustes });
 
 export const useGrabaciones = () => useQuery({ queryKey: CLAVES.grabaciones, queryFn: listarGrabaciones });
+
+export const useSesionYoutube = () => useQuery({ queryKey: CLAVES.sesionYoutube, queryFn: estadoSesionYoutube });
+
+/** Nombre y foto solo con sesión (consulta a YouTube por red). */
+export const useCuentaYoutube = (conSesion: boolean) =>
+  useQuery({ queryKey: CLAVES.cuentaYoutube, queryFn: cuentaYoutube, enabled: conSesion, staleTime: 5 * 60_000 });
+
+/** Abre el inicio de sesión. Al conectar o cerrar la ventana se vuelve a leer la sesión. */
+export const useIniciarSesionYoutube = () => {
+  const cliente = useQueryClient();
+  return useMutation({
+    mutationFn: (alEvento: (evento: EventoSesion) => void) =>
+      iniciarSesionYoutube((evento) => {
+        if (evento.tipo !== "error") void cliente.invalidateQueries({ queryKey: CLAVES.sesionYoutube });
+        alEvento(evento);
+      }),
+  });
+};
+
+export const useCerrarSesionYoutube = () => {
+  const cliente = useQueryClient();
+  return useMutation({
+    mutationFn: cerrarSesionYoutube,
+    onSuccess: () => {
+      cliente.removeQueries({ queryKey: CLAVES.cuentaYoutube });
+      void cliente.invalidateQueries({ queryKey: CLAVES.sesionYoutube });
+    },
+  });
+};
 
 // --- Mutaciones ---
 

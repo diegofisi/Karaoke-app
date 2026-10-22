@@ -9,9 +9,10 @@ mod grabar;
 pub mod herramientas;
 mod juego;
 mod tipos;
+mod youtube;
 
 use biblioteca::Biblioteca;
-use tauri::{Manager, RunEvent};
+use tauri::{Manager, RunEvent, WindowEvent};
 
 use crate::estado::Estado;
 
@@ -22,6 +23,8 @@ pub fn run() {
         .setup(|app| {
             let datos = app.path().app_data_dir()?;
             std::fs::create_dir_all(datos.join("canciones"))?;
+            // Copias de cookies que dejo una fabrica cancelada (su `finally` no corre si se mata).
+            youtube::limpiar_copias(&datos.join("canciones"));
             // Musica/Karaoke: C:\Users\<usuario>\Music\Karaoke o ~/Music/Karaoke.
             let grabaciones = app
                 .path()
@@ -30,6 +33,19 @@ pub fn run() {
                 .unwrap_or_else(|_| datos.join("grabaciones"));
             app.manage(Estado::new(Biblioteca::new(datos), grabaciones));
             Ok(())
+        })
+        // Al cerrar la ventana principal: Tauri no sale mientras quede otra
+        // ventana (la de inicio de sesion), asi que se cierra todo aqui.
+        .on_window_event(|ventana, evento| {
+            if ventana.label() == "main"
+                && let WindowEvent::Destroyed = evento
+            {
+                let app = ventana.app_handle();
+                if let Some(estado) = app.try_state::<Estado>() {
+                    comandos::fabrica::cerrar_todo(&estado);
+                }
+                comandos::youtube::cerrar_ventanas(app);
+            }
         })
         .invoke_handler(tauri::generate_handler![
             comandos::fabrica::estado_fabrica,
@@ -53,6 +69,11 @@ pub fn run() {
             comandos::grabaciones::abrir_grabacion,
             comandos::grabaciones::mostrar_grabacion,
             comandos::grabaciones::borrar_grabacion,
+            comandos::youtube::estado_sesion_youtube,
+            comandos::youtube::cuenta_youtube,
+            comandos::youtube::iniciar_sesion_youtube,
+            comandos::youtube::renovar_sesion_youtube,
+            comandos::youtube::cerrar_sesion_youtube,
         ])
         .build(tauri::generate_context!());
     // Arranque, no runtime: si la ventana no se puede crear no hay a quien
@@ -70,6 +91,7 @@ pub fn run() {
             && let Some(estado) = app.try_state::<Estado>()
         {
             comandos::fabrica::cerrar_todo(&estado);
+            comandos::youtube::cerrar_ventanas(app);
         }
     });
 }

@@ -58,3 +58,8 @@ para no repetirlas.
   (carátula grande al inicio) podían compartir id y reutilizar el audio de
   la otra canción — dónde: `src-tauri/src/fabrica.rs` (`id_de_archivo`) y
   `fabrica/karaoke_fabrica/pipeline.py` (`id_cancion`), que deben coincidir.
+- 2026-10-22 — La sesión de YouTube se obtiene con una ventana de Google
+  dentro de la app (`cookies_for_url`, adaptado de diegofisi/youtube-downloader),
+  no leyendo navegadores: en Windows yt-dlp no puede leer Chrome/Edge/Brave.
+  yt-dlp reescribe el `--cookies` que recibe: siempre una copia por ejecución
+  — dónde: `src-tauri/src/youtube.rs`, `comandos/youtube.rs`, `fabrica/.../descarga.py`.

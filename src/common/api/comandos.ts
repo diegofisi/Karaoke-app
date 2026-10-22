@@ -13,6 +13,9 @@ import type {
   EventoInstalacion,
   FinPartida,
   FrameJuego,
+  CuentaYoutube,
+  EstadoSesion,
+  EventoSesion,
   Grabacion,
   Microfono,
   Modo,
@@ -91,5 +94,21 @@ export const abrirGrabacion = (ruta: string): Promise<null> => invoke<null>("abr
 
 /** La muestra en el Explorador (Windows) o el Finder (Mac). */
 export const mostrarGrabacion = (ruta: string): Promise<null> => invoke<null>("mostrar_grabacion", { ruta });
+
+export const estadoSesionYoutube = (): Promise<EstadoSesion> => invoke<EstadoSesion>("estado_sesion_youtube");
+
+export const cuentaYoutube = (): Promise<CuentaYoutube | null> => invoke<CuentaYoutube | null>("cuenta_youtube");
+
+/** Abre la ventana de Google; el resultado llega por `alEvento` (se cierra sola al conectar). */
+export const iniciarSesionYoutube = (alEvento: (evento: EventoSesion) => void): Promise<null> => {
+  const canal = new Channel<EventoSesion>();
+  canal.onmessage = alEvento;
+  return invoke<null>("iniciar_sesion_youtube", { canal });
+};
+
+/** Renueva la sesión con una ventana oculta (hasta ~20 s). `true` si quedó una sesión válida. */
+export const renovarSesionYoutube = (): Promise<boolean> => invoke<boolean>("renovar_sesion_youtube");
+
+export const cerrarSesionYoutube = (): Promise<null> => invoke<null>("cerrar_sesion_youtube");
 
 export const borrarGrabacion = (ruta: string): Promise<null> => invoke<null>("borrar_grabacion", { ruta });

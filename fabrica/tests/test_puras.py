@@ -293,3 +293,31 @@ def test_id_local_es_sha1_del_archivo_completo(tmp_path):
     archivo.write_bytes(b"hola")
     # Mismo valor que la prueba de Rust (src-tauri/src/fabrica.rs): los dos lados deben coincidir.
     assert id_cancion(Peticion(salida=tmp_path, audio=archivo)) == "local-99800b85d338"
+
+
+def test_descarga_usa_una_copia_de_las_cookies_y_la_borra(tmp_path, monkeypatch):
+    import karaoke_fabrica.descarga as d
+
+    original = tmp_path / "cookies.txt"
+    CONTENIDO = "# Netscape HTTP Cookie File" + chr(10)
+    original.write_text(CONTENIDO, encoding="utf-8")
+    vistas = {}
+
+    def falso(url, carpeta, sesion):
+        vistas["ruta"] = sesion.cookies
+        vistas["existia"] = sesion.cookies.is_file()
+        raise d.ErrorFabrica("descarga", "parar aqui")
+
+    monkeypatch.setattr(d, "_descargar", falso)
+    with pytest.raises(d.ErrorFabrica):
+        d.descargar("https://youtu.be/dQw4w9WgXcQ", tmp_path, SesionYoutube(cookies=original))
+    assert vistas["ruta"] != original and vistas["existia"]
+    assert not vistas["ruta"].exists(), "la copia se borra al terminar"
+    assert original.read_text(encoding="utf-8") == CONTENIDO
+
+
+def test_sesion_rechazada_se_detecta():
+    from karaoke_fabrica.descarga import es_sesion_rechazada
+
+    assert es_sesion_rechazada("ERROR: The provided YouTube account cookies are no longer valid.")
+    assert not es_sesion_rechazada("Video unavailable")
