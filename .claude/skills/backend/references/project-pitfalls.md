@@ -69,3 +69,10 @@ para no repetirlas.
   ventana "YouTube: iniciar sesión" salía vacía en 0.2.3 y 0.2.4 — dónde:
   `src-tauri/src/comandos/youtube.rs` (`iniciar_sesion_youtube`,
   `renovar_sesion_youtube`).
+- 2026-10-22 — En macOS la app va firmada con hardened runtime (Tauri,
+  `hardenedRuntime: true` por defecto): el micrófono necesita la capacidad
+  `com.apple.security.device.audio-input` en `src-tauri/Entitlements.plist`
+  (enlazado en `bundle.macOS.entitlements`), además de
+  `NSMicrophoneUsageDescription` en `Info.plist`. Síntoma: en Mac el juego
+  puntuaba todo "Fallo" sin traza de voz; el micrófono entregaba silencio sin
+  error — dónde: `src-tauri/tauri.conf.json`, `src-tauri/Entitlements.plist`.

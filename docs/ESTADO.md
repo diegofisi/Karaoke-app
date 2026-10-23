@@ -67,7 +67,9 @@ Lecciones (ya en el código y en sus comentarios):
   en `fabrica/README.md`.
 - `src-tauri`: ruta del Python del venv por sistema; cancelar mata el árbol de
   procesos (`taskkill /T` en Windows, grupo de procesos en Mac);
-  `Info.plist` con el permiso de micrófono para macOS; el audio de cpal se
+  `Info.plist` con el permiso de micrófono para macOS y `Entitlements.plist`
+  con `com.apple.security.device.audio-input` (la app va con hardened
+  runtime; sin él el micrófono entrega silencio); el audio de cpal se
   crea dentro de su hilo (en macOS no se puede mover de hilo).
 - Interfaz: WebView2 en Windows, WebKit en Mac (`vite.config.ts` compila para
   los dos).
