@@ -123,29 +123,43 @@ def desde_archivo(ruta: Path) -> Letra:
     return Letra(lineas, "usuario")
 
 
+# Esperas entre reintentos a LRCLIB (429 o 5xx): ~1 min en total, que es lo
+# que suelen durar sus caidas; el procesado entero tarda minutos de todos modos.
+ESPERAS_LRCLIB = (2.0, 4.0, 8.0, 15.0, 15.0, 20.0)
+
+
 def _pedir(ruta: str, params: dict) -> object:
-    """GET a LRCLIB. LRCLIB limita por IP (429): se reintenta respetando retry-after."""
+    """GET a LRCLIB. 429 (limite por IP) y 5xx se reintentan respetando retry-after."""
     import time
 
     import requests
 
-    for intento in range(4):
-        r = requests.get(f"{LRCLIB}/{ruta}", params=params, headers={"User-Agent": AGENTE}, timeout=15)
+    ultimo: Exception | None = None
+    for intento in range(len(ESPERAS_LRCLIB) + 1):
+        try:
+            r = requests.get(f"{LRCLIB}/{ruta}", params=params, headers={"User-Agent": AGENTE}, timeout=15)
+        except requests.RequestException as e:  # red caida un momento: tambien se reintenta
+            ultimo = e
+            if intento < len(ESPERAS_LRCLIB):
+                log.info("LRCLIB sin respuesta (%s): reintento en %.0f s", e, ESPERAS_LRCLIB[intento])
+                time.sleep(ESPERAS_LRCLIB[intento])
+                continue
+            raise
         if r.status_code == 404:
             return None
-        # 429: limite por IP; 5xx: servidor caido un momento (visto el 2026-10-16).
-        if (r.status_code == 429 or 500 <= r.status_code < 600) and intento < 3:
+        # 429: limite por IP; 5xx: servidor caido (503 durante minutos, visto el 2026-10-22).
+        if (r.status_code == 429 or 500 <= r.status_code < 600) and intento < len(ESPERAS_LRCLIB):
             try:
                 espera = float(r.headers.get("retry-after", "0"))
             except ValueError:
                 espera = 0.0
-            espera = min(max(espera, 2.0 * (intento + 1)), 15.0)
-            log.info("LRCLIB 429: reintento en %.0f s", espera)
+            espera = min(max(espera, ESPERAS_LRCLIB[intento]), 30.0)
+            log.info("LRCLIB %d: reintento en %.0f s", r.status_code, espera)
             time.sleep(espera)
             continue
         r.raise_for_status()
         return r.json()
-    return None
+    raise RuntimeError(f"LRCLIB no respondio: {ultimo}")
 
 
 def _desde_registro(reg: dict) -> Letra | None:
@@ -178,8 +192,12 @@ def buscar_lrclib(artista: str, titulo: str, duracion: float) -> Letra | None:
         candidatos = _pedir("search", {"q": f"{artista} {titulo_l}".strip()}) or []
         if not candidatos:
             candidatos = _pedir("search", {"track_name": titulo_l}) or []
-    except Exception as e:  # red caida, LRCLIB caido: no es fatal
-        aviso(f"No se pudo consultar LRCLIB: {e}")
+    except Exception as e:
+        # LRCLIB caido (503 durante minutos, visto el 2026-10-22) o sin red: no
+        # es fatal, se transcribe la voz. Sin letra.json en la carpeta, el
+        # siguiente procesado vuelve a preguntar a LRCLIB.
+        aviso(f"LRCLIB (la base de letras) no responde ({e}): la letra se transcribe de la voz y puede tener "
+              "errores. Vuelve a procesar la cancion mas tarde para buscarla de nuevo, o pega la letra.")
         return None
 
     # Preferir sincronizada y con duracion parecida (la version de YouTube puede tener intro).

@@ -148,3 +148,16 @@ el reconocedor en float32 ocupaba 12 GB de RAM y colgaba equipos de 8-16 GB).
 - Pendiente: medir en PC de gama baja (sin GPU) con `eval/` el tiempo total
   por canción, además del porcentaje a ≤100 ms, para decidir si hace falta
   un separador aún más ligero.
+
+## Fábrica al día y LRCLIB caído (2026-10-22, versión 0.2.7)
+
+- La fábrica instalada por la app se reinstala cuando cambia la versión de la
+  app (`listo.json` guarda la versión; `estado_fabrica` lo detecta y el
+  botón «Instalar la fábrica» la actualiza en menos de un minuto). Hasta la
+  0.2.6 los arreglos de la fábrica no llegaban a las apps ya instaladas.
+- LRCLIB caído (503 durante minutos): se reintenta hasta ~1 minuto y, si no
+  responde, se transcribe la voz con un aviso claro; al reprocesar se vuelve
+  a buscar (no se guarda `letra.json` sin letra). El procesado nunca se para
+  por falta de letra (decisión del usuario).
+- Mac: `Entitlements.plist` con `com.apple.security.device.audio-input`
+  (hardened runtime): sin él el micrófono entregaba silencio.

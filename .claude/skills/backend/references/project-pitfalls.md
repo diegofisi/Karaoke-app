@@ -76,3 +76,10 @@ para no repetirlas.
   `NSMicrophoneUsageDescription` en `Info.plist`. Síntoma: en Mac el juego
   puntuaba todo "Fallo" sin traza de voz; el micrófono entregaba silencio sin
   error — dónde: `src-tauri/tauri.conf.json`, `src-tauri/Entitlements.plist`.
+- 2026-10-22 — La fábrica instalada por la app (`<datos>/entorno/venv`) es una
+  copia (`uv pip install` del recurso): no cambia al actualizar la app.
+  `listo.json` guarda la `version` de la app que la instaló y
+  `estado_fabrica` la da por no lista si difiere, con el botón «Instalar la
+  fábrica» (que reinstala solo el paquete, `--reinstall-package`). Síntoma:
+  los arreglos de la fábrica de 0.2.1 a 0.2.6 nunca llegaron a quien instaló
+  la 0.2.0 — dónde: `src-tauri/src/entorno.rs`, `comandos/fabrica.rs`.

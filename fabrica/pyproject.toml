@@ -7,7 +7,7 @@ packages = ["karaoke_fabrica"]
 
 [project]
 name = "karaoke-fabrica"
-version = "0.2.3"
+version = "0.2.7"
 description = "Fabrica del karaoke: descarga, separa, alinea la letra y saca el tono de referencia"
 requires-python = ">=3.12,<3.13"
 dependencies = [

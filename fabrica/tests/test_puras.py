@@ -6,7 +6,7 @@ import pytest
 from karaoke_fabrica.alineacion import (
     Unidad, _confianza, _ordenar, _repartir, _rellenar_huecos, anclar, casar, letra_desde_unidades,
 )
-from karaoke_fabrica.letra import leer_lrc, leer_texto_plano, limpiar_titulo
+from karaoke_fabrica.letra import buscar_lrclib, leer_lrc, leer_texto_plano, limpiar_titulo
 from karaoke_fabrica.notas import notas_de_palabra
 from karaoke_fabrica.texto import clave, detectar_idioma, palabras, palabras_espacio
 from karaoke_fabrica.tono import PASO, Curva, limpiar
@@ -322,3 +322,47 @@ def test_sesion_rechazada_se_detecta():
 
     assert es_sesion_rechazada("ERROR: The provided YouTube account cookies are no longer valid.")
     assert not es_sesion_rechazada("Video unavailable")
+
+
+def test_lrclib_caido_no_es_fatal(monkeypatch):
+    """Sin LRCLIB se sigue (se transcribe la voz): nunca se cuelga el procesado."""
+    import karaoke_fabrica.letra as m
+
+    avisos: list[str] = []
+    monkeypatch.setattr(m, "aviso", avisos.append)
+
+    def caido(ruta, params):
+        raise RuntimeError("503 Service Unavailable")
+
+    monkeypatch.setattr(m, "_pedir", caido)
+    assert buscar_lrclib("Artista", "Titulo", 200.0) is None
+    assert avisos and "LRCLIB" in avisos[0] and "transcribe" in avisos[0]
+
+    monkeypatch.setattr(m, "_pedir", lambda ruta, params: None)
+    assert buscar_lrclib("Artista", "Titulo", 200.0) is None
+
+
+def test_lrclib_reintenta_los_5xx_y_devuelve_al_recuperarse(monkeypatch):
+    import karaoke_fabrica.letra as m
+
+    class Resp:
+        def __init__(self, codigo, cuerpo=None):
+            self.status_code, self.headers, self._cuerpo = codigo, {}, cuerpo
+
+        def json(self):
+            return self._cuerpo
+
+        def raise_for_status(self):
+            if self.status_code >= 400:
+                raise RuntimeError(self.status_code)
+
+    respuestas = [Resp(503), Resp(503), Resp(200, {"id": 1})]
+    import requests
+
+    monkeypatch.setattr(requests, "get", lambda *a, **k: respuestas.pop(0))
+    esperas: list[float] = []
+    import time
+
+    monkeypatch.setattr(time, "sleep", esperas.append)
+    assert m._pedir("get", {}) == {"id": 1}
+    assert esperas == [2.0, 4.0]

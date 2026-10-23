@@ -231,7 +231,7 @@ checksum = "1505bd5d3d116872e7271a6d4e16d81d0c8570876c8de68093a09ac269d8aac0"
 
 [[package]]
 name = "audio"
-version = "0.2.6"
+version = "0.2.7"
 dependencies = [
  "cpal",
  "hound",
@@ -329,7 +329,7 @@ checksum = "ac07cdecf99051d9a5238b80f35af32cdeba5b336e55d957b318b50137e18da5"
 
 [[package]]
 name = "biblioteca"
-version = "0.2.6"
+version = "0.2.7"
 dependencies = [
  "karaoke-core",
  "puntuacion",
@@ -2165,7 +2165,7 @@ dependencies = [
 
 [[package]]
 name = "karaoke"
-version = "0.2.6"
+version = "0.2.7"
 dependencies = [
  "audio",
  "base64 0.22.1",
@@ -2188,7 +2188,7 @@ dependencies = [
 
 [[package]]
 name = "karaoke-core"
-version = "0.2.6"
+version = "0.2.7"
 dependencies = [
  "serde",
  "serde_json",
@@ -3084,7 +3084,7 @@ dependencies = [
 
 [[package]]
 name = "puntuacion"
-version = "0.2.6"
+version = "0.2.7"
 dependencies = [
  "karaoke-core",
  "serde",
@@ -4652,7 +4652,7 @@ checksum = "06bdbd8cfc056b8d2e2e85f29b56a3bdbecb527cef81eb39e3e7b98af4652770"
 
 [[package]]
 name = "tono"
-version = "0.2.6"
+version = "0.2.7"
 dependencies = [
  "pitch-detection",
 ]

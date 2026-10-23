@@ -67,11 +67,19 @@ pub async fn estado_fabrica(estado: State<'_, Estado>) -> Result<EstadoFabrica, 
         .await
         .map_err(|e| format!("No se pudo consultar la fabrica: {e}"))?;
 
-    let fabrica_ok = r.lista;
     // Instalar solo sirve si la app va a usar su propio entorno: con una
     // carpeta elegida en Ajustes o KARAOKE_PYTHON, se usaria otro Python.
     let elegida = candado(&estado.ajustes)?.carpeta_fabrica.is_some();
     let por_variable = std::env::var_os("KARAOKE_PYTHON").is_some();
+    // La fabrica instalada por la app es de otra version: su codigo viaja con
+    // la app y hay que reinstalarla (rapido: PyTorch y los modelos ya estan).
+    let datos = estado.biblioteca.datos();
+    let desactualizada =
+        !elegida && !por_variable && entorno::instalado(datos) && !entorno::actualizada(datos);
+    if desactualizada {
+        r.lista = false;
+    }
+    let fabrica_ok = r.lista;
     let ffmpeg = herramientas::buscar("ffmpeg");
     let js = herramientas::runtime_js();
     let gpu = r.gpu.clone();
@@ -85,6 +93,12 @@ pub async fn estado_fabrica(estado: State<'_, Estado>) -> Result<EstadoFabrica, 
             true,
             if fabrica_ok {
                 format!("Python {}", r.python.clone().unwrap_or_default())
+            } else if desactualizada && r.puede_instalar {
+                format!(
+                    "Instalada por la versión {} de la app; esta es la {}. Pulsa «Instalar la fábrica» para actualizarla (menos de un minuto: PyTorch y los modelos ya están).",
+                    entorno::version_instalada(datos).unwrap_or_else(|| "anterior".into()),
+                    entorno::VERSION_APP
+                )
             } else if elegida {
                 "La carpeta elegida en Ajustes no tiene la fábrica instalada. Quítala en Ajustes → Fábrica para que la app instale la suya.".into()
             } else if r.puede_instalar {

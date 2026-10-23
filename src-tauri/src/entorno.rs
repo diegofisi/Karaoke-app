@@ -49,6 +49,23 @@ pub fn instalado(datos: &Path) -> bool {
     carpeta(datos).join(MARCA).is_file() && python(datos).is_file()
 }
 
+/// Version de la app; cada version lleva su codigo de la fabrica (recurso).
+pub const VERSION_APP: &str = env!("CARGO_PKG_VERSION");
+
+/// Version de la app que instalo la fabrica (en `listo.json`); `None` si la
+/// marca es de antes de guardarla (0.2.6 o anterior).
+pub fn version_instalada(datos: &Path) -> Option<String> {
+    let texto = fs::read_to_string(carpeta(datos).join(MARCA)).ok()?;
+    let v: Value = serde_json::from_str(&texto).ok()?;
+    v.get("version").and_then(Value::as_str).map(str::to_string)
+}
+
+/// La fabrica instalada es la de esta version de la app. Si no, hay que
+/// reinstalarla: rapido, porque PyTorch y los modelos ya estan.
+pub fn actualizada(datos: &Path) -> bool {
+    version_instalada(datos).as_deref() == Some(VERSION_APP)
+}
+
 /// Progreso de `instalar_fabrica` (CONTRATO seccion 6).
 #[derive(Debug, Clone, Serialize)]
 #[serde(tag = "tipo", rename_all = "snake_case")]
@@ -234,8 +251,18 @@ pub fn instalar(
         .map_err(|e| format!("No se pudo leer la ruta de la fabrica: {e}"))?
         .to_string_lossy()
         .into_owned();
+    // --reinstall-package: la version de pyproject.toml no siempre cambia y uv
+    // daria la fabrica por instalada aunque su codigo sea de otra version.
     ejecutar(
-        uv_cmd(&["pip", "install", "--python", &py_texto, &fuente]),
+        uv_cmd(&[
+            "pip",
+            "install",
+            "--python",
+            &py_texto,
+            "--reinstall-package",
+            "karaoke-fabrica",
+            &fuente,
+        ]),
         |t| enviar(EventoInstalacion::Linea { texto: t }),
     )?;
 
@@ -269,8 +296,47 @@ pub fn instalar(
     })
     .map_err(|e| error_preparar.clone().unwrap_or(e))?;
 
-    let marca = serde_json::json!({ "torch": variante, "python": PYTHON });
+    let marca = serde_json::json!({ "torch": variante, "python": PYTHON, "version": VERSION_APP });
     fs::write(ent.join(MARCA), marca.to_string())
         .map_err(|e| format!("No se pudo terminar la instalacion: {e}"))?;
     Ok(())
+}
+
+#[cfg(test)]
+mod pruebas {
+    #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+    use super::*;
+
+    fn datos_temporales(nombre: &str) -> PathBuf {
+        let d =
+            std::env::temp_dir().join(format!("karaoke-entorno-{nombre}-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&d);
+        fs::create_dir_all(carpeta(&d)).unwrap();
+        d
+    }
+
+    #[test]
+    fn la_marca_sin_version_cuenta_como_desactualizada() {
+        let d = datos_temporales("vieja");
+        fs::write(
+            carpeta(&d).join(MARCA),
+            r#"{"torch":"cu130","python":"3.12"}"#,
+        )
+        .unwrap();
+        assert_eq!(version_instalada(&d), None);
+        assert!(!actualizada(&d));
+        let _ = fs::remove_dir_all(&d);
+    }
+
+    #[test]
+    fn la_marca_con_la_version_de_la_app_esta_al_dia() {
+        let d = datos_temporales("nueva");
+        let marca = serde_json::json!({ "torch": "cpu", "python": PYTHON, "version": VERSION_APP });
+        fs::write(carpeta(&d).join(MARCA), marca.to_string()).unwrap();
+        assert_eq!(version_instalada(&d).as_deref(), Some(VERSION_APP));
+        assert!(actualizada(&d));
+        fs::write(carpeta(&d).join(MARCA), r#"{"version":"0.0.1"}"#).unwrap();
+        assert!(!actualizada(&d));
+        let _ = fs::remove_dir_all(&d);
+    }
 }

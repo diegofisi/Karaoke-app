@@ -71,8 +71,9 @@ export const PanelRequisitos = ({ estado, error, instalacion, mostrarSiListo }: 
           {!instalacion.enCurso && (
             <>
               <Typography variant="body2" sx={{ color: "text.secondary", mb: 1.5 }}>
-                La app descarga e instala sola Python, PyTorch y los modelos de IA (unos 13 GB). Puede tardar
-                bastante según tu conexión; no hace falta instalar nada más.
+                La primera vez, la app descarga e instala sola Python, PyTorch y los modelos de IA (unos 13 GB) y
+                puede tardar bastante según tu conexión. Actualizar la fábrica a una versión nueva tarda menos de un
+                minuto. No hace falta instalar nada más.
               </Typography>
               <Button variant="contained" startIcon={<DownloadIcon />} onClick={instalacion.instalar}>
                 Instalar la fábrica
