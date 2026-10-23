@@ -89,6 +89,9 @@ fn ejecutar(u: &Ubicacion, url: &str, sesion: Option<&Path>) -> Result<Value, St
         "--flat-playlist",
         "--no-warnings",
         "--no-playlist",
+        // Solo hacen falta los metadatos: sin formatos (sin runtime de JS,
+        // bloqueo parcial) la vista previa sigue saliendo.
+        "--ignore-no-formats-error",
     ]);
     // --no-playlist: una URL de video con list= es el video. Las listas puras no
     // tienen "v=" y yt-dlp las trata como lista igualmente.
@@ -98,12 +101,10 @@ fn ejecutar(u: &Ubicacion, url: &str, sesion: Option<&Path>) -> Result<Value, St
         c.args(["--playlist-end", &TOPE_LISTA.to_string()]);
     }
     if let Some(js) = herramientas::runtime_js() {
-        let nombre = js
-            .file_stem()
-            .and_then(|n| n.to_str())
-            .unwrap_or("deno")
-            .to_string();
-        c.args(["--js-runtimes", &format!("{nombre}:{}", js.display())]);
+        c.args([
+            "--js-runtimes",
+            &format!("{}:{}", nombre_runtime(&js), js.display()),
+        ]);
     }
     if let Some(s) = sesion {
         c.args(["--cookies", &s.display().to_string()]);
@@ -130,6 +131,21 @@ fn ejecutar(u: &Ubicacion, url: &str, sesion: Option<&Path>) -> Result<Value, St
     }
     serde_json::from_slice(&salida.stdout)
         .map_err(|e| format!("No se pudo leer la respuesta de yt-dlp: {e}"))
+}
+
+/// Etiqueta que yt-dlp acepta en `--js-runtimes` (deno, node, bun). El sidecar
+/// en desarrollo se llama `deno-x86_64-pc-windows-msvc.exe`: con ese nombre
+/// yt-dlp lo ignoraba y no sacaba ningun formato.
+fn nombre_runtime(ruta: &std::path::Path) -> &'static str {
+    let stem = ruta
+        .file_stem()
+        .and_then(|n| n.to_str())
+        .unwrap_or_default()
+        .to_lowercase();
+    ["deno", "node", "bun"]
+        .into_iter()
+        .find(|n| stem.starts_with(n))
+        .unwrap_or("deno")
 }
 
 /// Mensaje en espanol para el fallo de yt-dlp; los casos corrientes se
@@ -374,6 +390,17 @@ pub fn desde_json(v: &Value, url: &str) -> VistaPrevia {
 mod pruebas {
     #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
     use super::*;
+
+    #[test]
+    fn el_runtime_se_nombra_como_lo_acepta_yt_dlp() {
+        use std::path::Path;
+        assert_eq!(
+            nombre_runtime(Path::new(r"C:\app\deno-x86_64-pc-windows-msvc.exe")),
+            "deno"
+        );
+        assert_eq!(nombre_runtime(Path::new("/opt/homebrew/bin/node")), "node");
+        assert_eq!(nombre_runtime(Path::new("bun-aarch64-apple-darwin")), "bun");
+    }
 
     #[test]
     fn el_error_de_yt_dlp_sale_en_espanol() {
