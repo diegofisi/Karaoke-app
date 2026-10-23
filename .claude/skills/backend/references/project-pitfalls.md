@@ -63,3 +63,9 @@ para no repetirlas.
   no leyendo navegadores: en Windows yt-dlp no puede leer Chrome/Edge/Brave.
   yt-dlp reescribe el `--cookies` que recibe: siempre una copia por ejecución
   — dónde: `src-tauri/src/youtube.rs`, `comandos/youtube.rs`, `fabrica/.../descarga.py`.
+- 2026-10-22 — Un comando que crea una ventana (`WebviewWindowBuilder::build`)
+  tiene que ser `async fn`: el sincrono corre en el hilo principal y en
+  Windows el WebView2 nuevo se queda en blanco (sin error). Síntoma: la
+  ventana "YouTube: iniciar sesión" salía vacía en 0.2.3 y 0.2.4 — dónde:
+  `src-tauri/src/comandos/youtube.rs` (`iniciar_sesion_youtube`,
+  `renovar_sesion_youtube`).
