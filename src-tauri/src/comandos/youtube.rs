@@ -128,8 +128,13 @@ pub fn cerrar_sesion_youtube(estado: State<'_, Estado>) -> Result<(), String> {
 
 /// Abre la ventana de inicio de sesion de Google. Cuando el usuario llega a
 /// youtube.com con sesion, se guardan las cookies y la ventana se cierra sola.
+/// `async` a proposito: un comando sincrono corre en el hilo principal y en
+/// Windows crear ahi la ventana deja el WebView2 en blanco.
 #[tauri::command(rename_all = "snake_case")]
-pub fn iniciar_sesion_youtube(app: AppHandle, canal: Channel<EventoSesion>) -> Result<(), String> {
+pub async fn iniciar_sesion_youtube(
+    app: AppHandle,
+    canal: Channel<EventoSesion>,
+) -> Result<(), String> {
     if let Some(abierta) = app.get_webview_window(VENTANA_LOGIN) {
         let _ = abierta.set_focus();
         return Ok(());
