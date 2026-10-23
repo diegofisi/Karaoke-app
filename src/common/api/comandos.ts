@@ -22,6 +22,7 @@ import type {
   PeticionProceso,
   ResultadoCalibracion,
   ResumenCancion,
+  VistaPreviaRespuesta,
 } from "@/common/interfaces";
 
 export const estadoFabrica = (): Promise<EstadoFabrica> => invoke<EstadoFabrica>("estado_fabrica");
@@ -94,6 +95,10 @@ export const abrirGrabacion = (ruta: string): Promise<null> => invoke<null>("abr
 
 /** La muestra en el Explorador (Windows) o el Finder (Mac). */
 export const mostrarGrabacion = (ruta: string): Promise<null> => invoke<null>("mostrar_grabacion", { ruta });
+
+/** Vista previa de una URL de YouTube (vídeo o lista). Tarda unos segundos. */
+export const analizarUrl = (url: string): Promise<VistaPreviaRespuesta> =>
+  invoke<VistaPreviaRespuesta>("analizar_url", { url });
 
 export const estadoSesionYoutube = (): Promise<EstadoSesion> => invoke<EstadoSesion>("estado_sesion_youtube");
 

@@ -33,7 +33,6 @@ class Peticion:
     separador: str | None = None  # None = el que quepa ahora (recursos.separador_para_ahora)
     alinear_sobre: str = "voz"  # "voz" | "mezcla"
     cookies: Path | None = None
-    navegador: str | None = None
 
 
 def id_cancion(p: Peticion) -> str:
@@ -69,7 +68,7 @@ def procesar(p: Peticion) -> tuple[str, Path]:
     cid = id_cancion(p)
 
     if p.url:
-        meta = descarga.descargar(p.url, p.salida, descarga.SesionYoutube(p.cookies, p.navegador))
+        meta = descarga.descargar(p.url, p.salida, descarga.SesionYoutube(p.cookies))
     else:
         assert p.audio is not None
         # Sin titulo ni artista: se sacan del nombre del archivo ("Artista - Titulo.mp3").

@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
+  useAnalizarUrl,
   useCancelarProceso,
   useEstadoFabrica,
   useIniciarSesionYoutube,
@@ -14,6 +15,7 @@ import {
   type EventoFabrica,
   type Modo,
   type PeticionProceso,
+  type VistaPrevia,
 } from "@/common/interfaces";
 import { mensajeDeError } from "@/common/helpers/errores";
 import { rutaJuego } from "@/common/routes/rutas";
@@ -25,7 +27,8 @@ import {
   nuevaClaveTrabajo,
   problemaDeFormulario,
 } from "../helpers/formulario";
-import type { CambiarCampo, FormularioProceso } from "../interfaces/formulario";
+import { MAXIMO_POR_LOTE, entradasDe, seleccionInicial } from "../helpers/vistaPrevia";
+import { OrigenAudio, type CambiarCampo, type FormularioProceso } from "../interfaces/formulario";
 
 export interface DatosProcesar {
   formulario: FormularioProceso;
@@ -37,6 +40,14 @@ export interface DatosProcesar {
   errorDialogo: string | null;
   enviar: () => void;
   arrancando: boolean;
+  /** Vista previa de la URL (solo origen URL). */
+  analizar: () => void;
+  analizando: boolean;
+  errorAnalisis: string | null;
+  vista: VistaPrevia | null;
+  seleccion: Set<string>;
+  cambiarSeleccion: (url: string, seleccionado: boolean) => void;
+  seleccionarTodos: (seleccionar: boolean) => void;
   fabricaNoLista: boolean;
   estadoFabrica: EstadoFabrica | undefined;
   errorFabrica: string | null;
@@ -117,13 +128,57 @@ export const useProcesar = (): DatosProcesar => {
   const [formulario, fijarFormulario] = useState<FormularioProceso>(FORMULARIO_VACIO);
   const [intentado, fijarIntentado] = useState(false);
   const [errorDialogo, fijarErrorDialogo] = useState<string | null>(null);
+  const analisis = useAnalizarUrl();
+  const [vista, fijarVista] = useState<VistaPrevia | null>(null);
+  const [seleccion, fijarSeleccion] = useState<Set<string>>(new Set());
+  /** URL de la vista previa actual: si el usuario la cambia, la vista deja de valer. */
+  const [urlAnalizada, fijarUrlAnalizada] = useState("");
+  /** La URL escrita ahora mismo, para descartar un análisis que llega tarde. */
+  const urlActual = useRef(formulario.url);
+  urlActual.current = formulario.url;
 
   const problema = problemaDeFormulario(formulario);
   // Bloqueado tambien mientras se comprueba o si la comprobacion falla.
   const fabricaNoLista = fabrica.data?.lista !== true;
 
-  const cambiar: CambiarCampo = (campo, valor) =>
+  const cambiar: CambiarCampo = (campo, valor) => {
     fijarFormulario((anterior) => ({ ...anterior, [campo]: valor }));
+    if (campo === "url" && String(valor).trim() !== urlAnalizada) {
+      fijarVista(null);
+      fijarSeleccion(new Set());
+    }
+  };
+
+  const analizar = () => {
+    fijarIntentado(true);
+    const url = formulario.url.trim();
+    if (problemaDeFormulario(formulario) !== null) return;
+    fijarVista(null);
+    analisis.mutate(url, {
+      onSuccess: (r) => {
+        // El usuario cambió la URL mientras se analizaba: esta vista ya no es la suya.
+        if (urlActual.current.trim() !== url) return;
+        fijarVista(r.vista);
+        fijarSeleccion(seleccionInicial(r.vista));
+        fijarUrlAnalizada(url);
+        fijarIntentado(false);
+        // La sesión guardada ya no vale: se renueva en silencio para la descarga.
+        if (r.sesion_rechazada) void renovarSesionEnSilencio();
+      },
+    });
+  };
+
+  const cambiarSeleccion = (url: string, seleccionado: boolean) =>
+    fijarSeleccion((s) => {
+      const nueva = new Set(s);
+      // Tope por lote también a mano: cada canción tarda minutos.
+      if (seleccionado && nueva.size < MAXIMO_POR_LOTE) nueva.add(url);
+      else if (!seleccionado) nueva.delete(url);
+      return nueva;
+    });
+
+  const seleccionarTodos = (seleccionar: boolean) =>
+    fijarSeleccion(vista !== null && seleccionar ? seleccionInicial(vista) : new Set());
 
   const elegirArchivo = () => {
     fijarErrorDialogo(null);
@@ -137,10 +192,30 @@ export const useProcesar = (): DatosProcesar => {
   const enviar = () => {
     fijarIntentado(true);
     if (problema !== null || fabricaNoLista) return;
-    const clave = nuevaClaveTrabajo();
-    const peticion = aPeticion(formulario);
-    crear(clave, nombreDeTrabajo(formulario), peticion);
-    lanzar(clave, peticion);
+    if (formulario.origen === OrigenAudio.Url) {
+      // Sin vista previa todavía: el botón Procesar primero analiza.
+      if (vista === null) {
+        analizar();
+        return;
+      }
+      // Un trabajo por vídeo elegido, con su título ya conocido.
+      for (const video of entradasDe(vista)) {
+        if (!seleccion.has(video.url)) continue;
+        const clave = nuevaClaveTrabajo();
+        const peticion = aPeticion(formulario, video.url);
+        const nombre = video.canal ? `${video.canal} — ${video.titulo}` : video.titulo;
+        crear(clave, nombre, peticion);
+        lanzar(clave, peticion);
+      }
+      fijarVista(null);
+      fijarSeleccion(new Set());
+      fijarUrlAnalizada("");
+    } else {
+      const clave = nuevaClaveTrabajo();
+      const peticion = aPeticion(formulario);
+      crear(clave, nombreDeTrabajo(formulario), peticion);
+      lanzar(clave, peticion);
+    }
     fijarIntentado(false);
     fijarFormulario((anterior) => ({ ...FORMULARIO_VACIO, origen: anterior.origen, idioma: anterior.idioma }));
   };
@@ -157,6 +232,13 @@ export const useProcesar = (): DatosProcesar => {
     errorDialogo,
     enviar,
     arrancando: procesar.isPending,
+    analizar,
+    analizando: analisis.isPending,
+    errorAnalisis: analisis.isError ? mensajeDeError(analisis.error) : null,
+    vista,
+    seleccion,
+    cambiarSeleccion,
+    seleccionarTodos,
     fabricaNoLista,
     estadoFabrica: fabrica.data,
     errorFabrica: fabrica.isError ? mensajeDeError(fabrica.error) : null,

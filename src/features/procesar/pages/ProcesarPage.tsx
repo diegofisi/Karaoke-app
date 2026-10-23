@@ -5,16 +5,18 @@ import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
-import { PanelRequisitos } from "@/common/components/PanelRequisitos";
-import { useInstalacionFabrica } from "@/common/hooks/useInstalacionFabrica";
+import { useNavigate } from "react-router-dom";
 import { CabeceraPagina } from "@/common/components/CabeceraPagina";
+import { RUTAS } from "@/common/routes/rutas";
 import { FormularioProceso } from "../components/FormularioProceso";
 import { TarjetaTrabajo } from "../components/TarjetaTrabajo";
 import { useProcesar } from "../hooks/useProcesar";
 
 export const ProcesarPage = () => {
   const procesar = useProcesar();
-  const instalacion = useInstalacionFabrica();
+  const navegar = useNavigate();
+  const irAAjustes = () => void navegar(RUTAS.ajustes);
+  const faltan = procesar.estadoFabrica?.requisitos.filter((r) => !r.ok) ?? [];
 
   return (
     <Box sx={{ maxWidth: 920 }}>
@@ -22,12 +24,26 @@ export const ProcesarPage = () => {
         titulo="Procesar"
         subtitulo="La fábrica separa la voz, alinea la letra palabra por palabra y saca las notas. Tarda de 1 a 3 minutos con GPU."
       />
-      <PanelRequisitos
-        estado={procesar.estadoFabrica}
-        error={procesar.errorFabrica}
-        instalacion={instalacion}
-        mostrarSiListo={true}
-      />
+      {/* El detalle de requisitos y la instalación viven en Ajustes; aquí solo se avisa si falta algo. */}
+      {procesar.errorFabrica !== null && (
+        <Alert
+          severity="error"
+          sx={{ mb: 3 }}
+          action={<Button color="inherit" size="small" onClick={irAAjustes}>Ir a Ajustes</Button>}
+        >
+          No se pudo comprobar lo necesario para procesar: {procesar.errorFabrica}
+        </Alert>
+      )}
+      {procesar.estadoFabrica !== undefined && !procesar.estadoFabrica.lista && (
+        <Alert
+          severity="warning"
+          sx={{ mb: 3 }}
+          action={<Button color="inherit" size="small" onClick={irAAjustes}>Ir a Ajustes</Button>}
+        >
+          Falta algo para poder procesar: {faltan.map((r) => r.nombre).join(", ")}. En Ajustes → Fábrica se instala
+          lo que falte.
+        </Alert>
+      )}
 
       <Card sx={{ mb: 4 }}>
         <CardContent sx={{ p: 3 }}>
@@ -41,6 +57,13 @@ export const ProcesarPage = () => {
             onEnviar={procesar.enviar}
             arrancando={procesar.arrancando}
             fabricaNoLista={procesar.fabricaNoLista}
+            onAnalizar={procesar.analizar}
+            analizando={procesar.analizando}
+            errorAnalisis={procesar.errorAnalisis}
+            vista={procesar.vista}
+            seleccion={procesar.seleccion}
+            onCambiarSeleccion={procesar.cambiarSeleccion}
+            onSeleccionarTodos={procesar.seleccionarTodos}
           />
         </CardContent>
       </Card>

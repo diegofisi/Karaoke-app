@@ -12,6 +12,7 @@ use tauri::webview::{PageLoadEvent, WebviewWindow, WebviewWindowBuilder};
 use tauri::{AppHandle, Manager, State, Url, WebviewUrl, WindowEvent};
 
 use crate::estado::Estado;
+use crate::vista_previa;
 use crate::youtube::{self, CookieLeida, CuentaYoutube, EstadoSesion};
 
 pub const VENTANA_LOGIN: &str = "youtube-login";
@@ -76,6 +77,34 @@ fn url_login() -> Result<Url, String> {
     youtube::URL_INICIO_SESION
         .parse()
         .map_err(|e| format!("No se pudo abrir el inicio de sesion: {e}"))
+}
+
+/// Vista previa de una URL (video o lista). Con sesion rechazada por YouTube
+/// devuelve la vista igualmente y `sesion_rechazada: true`.
+#[tauri::command(rename_all = "snake_case")]
+pub async fn analizar_url(app: AppHandle, url: String) -> Result<VistaPreviaRespuesta, String> {
+    let (u, sesion) = {
+        let estado = app.state::<Estado>();
+        (
+            crate::comandos::fabrica::ubicacion(&estado)?,
+            crate::comandos::fabrica::sesion_youtube(&estado),
+        )
+    };
+    tauri::async_runtime::spawn_blocking(move || {
+        vista_previa::analizar(&u, &url, &sesion).map(|a| VistaPreviaRespuesta {
+            vista: a.vista,
+            sesion_rechazada: a.sesion_rechazada,
+        })
+    })
+    .await
+    .map_err(|e| format!("No se pudo analizar la URL: {e}"))?
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub struct VistaPreviaRespuesta {
+    pub vista: vista_previa::VistaPrevia,
+    pub sesion_rechazada: bool,
 }
 
 #[tauri::command(rename_all = "snake_case")]

@@ -15,8 +15,12 @@ import ToggleButtonGroup from "@mui/material/ToggleButtonGroup";
 import Typography from "@mui/material/Typography";
 import type { ReactNode } from "react";
 import { elegirCarpeta } from "@/common/api/dialogo";
+import { useEstadoFabrica } from "@/common/api/consultas";
 import { CabeceraPagina } from "@/common/components/CabeceraPagina";
 import { EstadoContenido } from "@/common/components/EstadoContenido";
+import { PanelRequisitos } from "@/common/components/PanelRequisitos";
+import { mensajeDeError } from "@/common/helpers/errores";
+import { useInstalacionFabrica } from "@/common/hooks/useInstalacionFabrica";
 import { Dificultad, type Dificultad as TipoDificultad } from "@/common/interfaces";
 import { PanelCalibracion } from "../components/PanelCalibracion";
 import { SeccionYoutube } from "../components/SeccionYoutube";
@@ -27,6 +31,8 @@ const MICROFONO_POR_DEFECTO = "";
 export const AjustesPage = () => {
   const a = useAjustesPantalla();
   const b = a.borrador;
+  const fabrica = useEstadoFabrica();
+  const instalacion = useInstalacionFabrica();
 
   if (a.cargando || (b === null && a.errorCarga === null)) {
     return <EstadoContenido tipo="cargando" mensaje="Leyendo los ajustes…" />;
@@ -124,12 +130,19 @@ export const AjustesPage = () => {
         </Seccion>
 
         <Seccion titulo="YouTube">
-          <SeccionYoutube ajustes={b} cambiar={a.cambiar} />
+          <SeccionYoutube />
         </Seccion>
 
         <Seccion titulo="Fábrica">
+          <PanelRequisitos
+            estado={fabrica.data}
+            error={fabrica.isError ? mensajeDeError(fabrica.error) : null}
+            instalacion={instalacion}
+            mostrarSiListo={true}
+          />
           <Typography variant="body2" sx={{ mb: 1 }}>
-            Carpeta del repositorio (o su carpeta <code>fabrica</code>) con el entorno de Python instalado.
+            Carpeta del repositorio (o su carpeta <code>fabrica</code>) con el entorno de Python instalado. Déjala por
+            defecto salvo que desarrolles la fábrica.
           </Typography>
           <Typography variant="body2" sx={{ color: "text.secondary", mb: 1.5, wordBreak: "break-all" }}>
             {b.carpeta_fabrica ?? "La de desarrollo (por defecto)"}

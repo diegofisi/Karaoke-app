@@ -87,16 +87,14 @@ def _artista_y_titulo(info: dict) -> tuple[str, str]:
 @dataclass
 class SesionYoutube:
     """Sesion de YouTube del usuario, para cuando YouTube pide "confirmar que no
-    eres un bot". `cookies`: archivo cookies.txt (formato Netscape).
-    `navegador`: firefox, chrome, edge, brave, safari... (en Windows solo
-    Firefox: Chrome, Edge y Brave cifran o bloquean sus cookies)."""
+    eres un bot". `cookies`: archivo cookies.txt (formato Netscape) que guarda
+    la app al iniciar sesion (Ajustes > YouTube)."""
 
     cookies: Path | None = None
-    navegador: str | None = None
 
     @property
     def activa(self) -> bool:
-        return self.cookies is not None or bool(self.navegador)
+        return self.cookies is not None
 
 
 # Probado el 2026-10-16: los clientes alternativos de yt-dlp (tv, web_safari,
@@ -136,8 +134,6 @@ def opciones_base(js: dict, sesion: SesionYoutube) -> dict:
     }
     if sesion.cookies is not None:
         opciones["cookiefile"] = str(sesion.cookies)
-    elif sesion.navegador:
-        opciones["cookiesfrombrowser"] = (sesion.navegador,)
     return opciones
 
 
@@ -147,12 +143,8 @@ def _error_de_sesion(e: Exception, sesion: SesionYoutube) -> str | None:
     # El aviso de bloqueo tambien dice "--cookies": no es un fallo de la sesion.
     if es_bloqueo_bot(texto):
         return None
-    if sesion.navegador and ("cookie" in texto.lower() or "dpapi" in texto.lower()):
-        return (f"No se pudo leer la sesion de YouTube de {sesion.navegador}: {texto}. "
-                "En Windows, Chrome, Edge y Brave no dejan leer sus cookies; usa Firefox o un archivo "
-                "cookies.txt (Ajustes > YouTube).")
     if sesion.cookies is not None and not sesion.cookies.is_file():
-        return f"No se encontro el archivo de cookies {sesion.cookies}. Revisalo en Ajustes > YouTube."
+        return f"No se encontro la sesion de YouTube guardada ({sesion.cookies}). Inicia sesion de nuevo en Ajustes > YouTube."
     return None
 
 
@@ -168,7 +160,7 @@ def descargar(url: str, carpeta: Path, sesion: SesionYoutube | None = None) -> M
     copia = carpeta / "cookies-ejecucion.txt"  # mismo nombre que youtube::COPIA_EJECUCION (Rust la limpia al arrancar)
     shutil.copyfile(sesion.cookies, copia)
     try:
-        return _descargar(url, carpeta, SesionYoutube(cookies=copia, navegador=sesion.navegador))
+        return _descargar(url, carpeta, SesionYoutube(cookies=copia))
     finally:
         copia.unlink(missing_ok=True)
 

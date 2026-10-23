@@ -1,6 +1,6 @@
 # Estado de la reescritura
 
-Última sesión: 2026-10-15. Se paró a petición del usuario (memoria del equipo
+Última sesión: 2026-10-22. Se paró a petición del usuario (memoria del equipo
 llena). Este archivo dice dónde retomar.
 
 ## Hecho y verificado
@@ -128,3 +128,21 @@ el reconocedor en float32 ocupaba 12 GB de RAM y colgaba equipos de 8-16 GB).
 | Sin GPU: separador Kim_Vocal_2 (validación) | 80,5 % |
 | Reconocedor 0,6B (descartado) | 67,1 % (español 43,5 %) |
 | Avance por grupos de 2 tramos (descartado) | 79,3 %: cambiaba los lotes; grupos de 8 = idéntico |
+
+## YouTube como en youtube-downloader (2026-10-22, versión 0.2.4)
+
+- **Sesión**: solo la ventana de inicio de sesión de la app
+  (`<datos>/youtube/cookies.txt`). Se quitaron `Ajustes.youtube_cookies`,
+  `youtube_navegador` y `--navegador` de la fábrica: en Windows yt-dlp no
+  lee Chrome/Edge/Brave y el archivo a mano confundía.
+- **Vista previa** (`src-tauri/src/vista_previa.rs`, comando `analizar_url`):
+  `yt-dlp -J --flat-playlist` antes de procesar. Un vídeo con `&list=` es un
+  vídeo; solo `/playlist?list=` es lista. En la lista, casillas por vídeo
+  (máximo 25 por lote, los privados o de más de 15 min deshabilitados) y un
+  trabajo de la cola por vídeo elegido. Si la sesión guardada falla, se
+  repite sin ella y la interfaz la renueva en silencio.
+- **Requisitos e instalación** de la fábrica viven en Ajustes → Fábrica;
+  Procesar solo avisa con "Ir a Ajustes" si falta algo.
+- Pendiente: medir en PC de gama baja (sin GPU) con `eval/` el tiempo total
+  por canción, además del porcentaje a ≤100 ms, para decidir si hace falta
+  un separador aún más ligero.

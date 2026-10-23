@@ -40,3 +40,7 @@
   Síntoma: `setCurrentTime`, `setUserPitch` y `setScoreState` en cada
   `requestAnimationFrame` repintaban la página entera y producían tirones
   (`legado-python:frontend/src/pages/KaraokePage.tsx:127-186`).
+- **2026-10-22** — En MUI 9 no existe `inputProps` en `Checkbox`, `Switch`
+  ni `Radio`: usa `slotProps={{ input: { "aria-label": … } }}`. Síntoma:
+  `tsc` falla con "Property 'inputProps' does not exist on type
+  CheckboxProps" (`src/features/procesar/components/TarjetaVideoPrevio.tsx`).

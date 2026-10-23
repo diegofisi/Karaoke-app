@@ -4,11 +4,12 @@
 mod comandos;
 pub mod entorno;
 mod estado;
-mod fabrica;
+pub mod fabrica;
 mod grabar;
 pub mod herramientas;
 mod juego;
 mod tipos;
+pub mod vista_previa;
 mod youtube;
 
 use biblioteca::Biblioteca;
@@ -69,6 +70,7 @@ pub fn run() {
             comandos::grabaciones::abrir_grabacion,
             comandos::grabaciones::mostrar_grabacion,
             comandos::grabaciones::borrar_grabacion,
+            comandos::youtube::analizar_url,
             comandos::youtube::estado_sesion_youtube,
             comandos::youtube::cuenta_youtube,
             comandos::youtube::iniciar_sesion_youtube,

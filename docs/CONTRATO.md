@@ -101,7 +101,7 @@ Ejecución:
 
 ```
 python -m karaoke_fabrica procesar --url <url> --salida <carpeta> [--idioma es|en|ja] [--letra <archivo.txt|.lrc>]
-                                   [--cookies <cookies.txt> | --navegador <firefox|safari|...>]
+                                   [--cookies <cookies.txt>]
 python -m karaoke_fabrica procesar --audio <archivo> --titulo <t> --artista <a> --salida <carpeta> [...]
 python -m karaoke_fabrica diagnostico
 python -m karaoke_fabrica preparar     # descarga todos los modelos de antemano
@@ -163,6 +163,7 @@ argumentos se escriben en `snake_case` también en TypeScript
 | `iniciar_sesion_youtube` | `canal: Channel<EventoSesion>` | `null`. Abre la ventana de inicio de sesión de Google; se cierra sola al llegar a YouTube con sesión y guarda `<datos>/youtube/cookies.txt` |
 | `renovar_sesion_youtube` | — | `boolean`. Ventana oculta (≤20 s); `true` si guardó una sesión válida |
 | `cerrar_sesion_youtube` | — | `null`. Borra `cookies.txt` |
+| `analizar_url` | `url: string` | `VistaPreviaRespuesta`. Qué se va a procesar antes de empezar (`yt-dlp -J --flat-playlist`): un vídeo o una lista con sus entradas (≤200). Una URL de vídeo con `list=` es **un vídeo**; solo `/playlist?list=` es una lista. Con sesión, si YouTube la rechaza se repite sin ella y `sesion_rechazada: true` |
 
 ### Tipos
 
@@ -183,12 +184,15 @@ Dificultad      = "facil" | "normal" | "dificil"
 Modo            = "practica" | "puntuacion"
 Ajustes         { microfono: string | null, latencia_ms: number, dificultad: Dificultad,
                   volumen_musica: number, volumen_guia: number, volumen_voz: number,
-                  mostrar_romaji: boolean, grabar: boolean, carpeta_fabrica: string | null,
-                  youtube_cookies: string | null,   // cookies.txt; prioridad sobre el navegador
-                  youtube_navegador: string | null } // firefox | safari | chrome | edge | brave
+                  mostrar_romaji: boolean, grabar: boolean, carpeta_fabrica: string | null }
                   // volúmenes 0–1; volumen_guia 0 = sin voz guía. volumen_voz 0–3 (1 = automático).
                   // carpeta_fabrica: la del repositorio o `fabrica/`; null = la de desarrollo.
-                  // Por defecto: null, 150, "normal", 0.9, 0, 1, true, false, null, null, null
+                  // Por defecto: null, 150, "normal", 0.9, 0, 1, true, false, null
+VideoPrevio     { id: string, url: string, titulo: string, canal: string, duracion: number | null,
+                  miniatura: string | null, problema: "privado" | "necesita_sesion" | "no_disponible" | null }
+VistaPrevia     = { tipo: "video", ...VideoPrevio }
+                | { tipo: "lista", id: string, titulo: string, canal: string, entradas: VideoPrevio[] }
+VistaPreviaRespuesta { vista: VistaPrevia, sesion_rechazada: boolean }   // true: la cookie guardada ya no vale
 ResultadoCalibracion { latencia_ms: number, medidas_ms: number[], fiable: boolean }
 ResultadoJuego  { puntos: number, nivel: Nivel, mejor_combo: number, precision_media: number,
                   por_calificacion: { perfecta, bien, regular, fallo }, record_anterior: number | null, es_record: boolean }
@@ -270,9 +274,8 @@ su propio reloj. En modo `practica` no hay puntuación: `puntos` y `combo` van a
   > repositorio de desarrollo.
 - Los procesos de la fábrica reciben un PATH con la carpeta de las
   herramientas empaquetadas primero.
-- **Sesión de YouTube** para yt-dlp, en este orden: `ajustes.youtube_cookies`
-  (archivo elegido a mano) > `<datos>/youtube/cookies.txt` (sesión iniciada en
-  la app) > `ajustes.youtube_navegador`. La fábrica usa una copia por ejecución
+- **Sesión de YouTube** para yt-dlp: `<datos>/youtube/cookies.txt`, la sesión
+  iniciada en la app (Ajustes → YouTube); no hay otra fuente. La fábrica usa una copia por ejecución
   (yt-dlp reescribe el archivo al terminar) y la borra al acabar. Si YouTube
   rechaza la sesión (`codigo: "sesion_rechazada"`), la interfaz la renueva en
   silencio y reintenta una vez.

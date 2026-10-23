@@ -23,6 +23,7 @@ sha1_smol = { workspace = true }
 reqwest = { workspace = true }
 base64 = { workspace = true }
 cookie = { workspace = true }
+url = { workspace = true }
 karaoke-core = { workspace = true }
 tono = { workspace = true }
 puntuacion = { workspace = true }

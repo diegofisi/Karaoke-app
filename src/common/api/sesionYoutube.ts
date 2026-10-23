@@ -3,7 +3,7 @@
 // la llama la cola de procesos fuera de React.
 
 import { EstadoSesion } from "@/common/interfaces";
-import { estadoSesionYoutube, obtenerAjustes, renovarSesionYoutube } from "./comandos";
+import { estadoSesionYoutube, renovarSesionYoutube } from "./comandos";
 import { CLAVES } from "./consultas";
 import { queryClient } from "./queryClient";
 
@@ -29,9 +29,6 @@ export const renovarSesionEnSilencio = (): Promise<boolean> => {
   enCurso = (async () => {
     const estado = await estadoSesionYoutube().catch(() => EstadoSesion.Ninguna);
     if (estado === EstadoSesion.Ninguna) return false;
-    // Con un cookies.txt elegido a mano, ese tiene prioridad: renovar no cambiaria nada.
-    const ajustes = await obtenerAjustes().catch(() => null);
-    if (ajustes?.youtube_cookies != null) return false;
     const ok = await renovarSesionYoutube().catch(() => false);
     if (!ok) ultimoFallo = Date.now();
     void queryClient.invalidateQueries({ queryKey: CLAVES.sesionYoutube });

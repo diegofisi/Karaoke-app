@@ -13,8 +13,18 @@ use crate::fabrica;
 use crate::herramientas;
 use crate::tipos::{EstadoFabrica, PeticionProceso, Requisito};
 
+/// Sesion de YouTube para yt-dlp: la iniciada en la app (Ajustes > YouTube).
+pub fn sesion_youtube(estado: &Estado) -> fabrica::SesionYoutube {
+    let de_la_app = crate::youtube::ruta_cookies(estado.biblioteca.datos());
+    fabrica::SesionYoutube {
+        cookies: de_la_app
+            .is_file()
+            .then(|| de_la_app.to_string_lossy().into_owned()),
+    }
+}
+
 /// Ubicacion del Python de la fabrica segun Ajustes y el entorno de la app.
-fn ubicacion(estado: &Estado) -> Result<fabrica::Ubicacion, String> {
+pub fn ubicacion(estado: &Estado) -> Result<fabrica::Ubicacion, String> {
     let elegida = candado(&estado.ajustes)?
         .carpeta_fabrica
         .clone()
@@ -220,20 +230,7 @@ pub fn procesar_cancion(
             return Err(e);
         }
     };
-    let sesion = {
-        let a = candado(&estado.ajustes)?;
-        // Orden: cookies.txt elegido a mano > sesion iniciada en la app > navegador.
-        let de_la_app = crate::youtube::ruta_cookies(estado.biblioteca.datos());
-        let cookies = a.youtube_cookies.clone().or_else(|| {
-            de_la_app
-                .is_file()
-                .then(|| de_la_app.to_string_lossy().into_owned())
-        });
-        fabrica::SesionYoutube {
-            cookies,
-            navegador: a.youtube_navegador.clone(),
-        }
-    };
+    let sesion = sesion_youtube(&estado);
     let hijo = match fabrica::arrancar(&peticion, &carpeta, &u, &sesion) {
         Ok(h) => h,
         Err(e) => {

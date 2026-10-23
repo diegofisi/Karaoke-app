@@ -14,6 +14,7 @@ import type {
 } from "@/common/interfaces";
 import {
   abrirGrabacion,
+  analizarUrl,
   borrarCancion,
   borrarGrabacion,
   cerrarSesionYoutube,
@@ -70,6 +71,9 @@ export const useMicrofonos = () => useQuery({ queryKey: CLAVES.microfonos, query
 export const useAjustes = () => useQuery({ queryKey: CLAVES.ajustes, queryFn: obtenerAjustes });
 
 export const useGrabaciones = () => useQuery({ queryKey: CLAVES.grabaciones, queryFn: listarGrabaciones });
+
+/** Vista previa de la URL escrita; se reintenta a mano, no sola. */
+export const useAnalizarUrl = () => useMutation({ mutationFn: (url: string) => analizarUrl(url) });
 
 export const useSesionYoutube = () => useQuery({ queryKey: CLAVES.sesionYoutube, queryFn: estadoSesionYoutube });
 

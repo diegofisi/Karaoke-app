@@ -11,8 +11,9 @@ export const FORMULARIO_VACIO: FormularioProceso = {
   letra: "",
 };
 
+// Vídeo, short, live o lista (playlist?list=…).
 const PATRON_YOUTUBE =
-  /^(https?:\/\/)?((www|m|music)\.)?(youtube\.com\/(watch\?(.*&)?v=|shorts\/|live\/|embed\/)|youtu\.be\/)[\w-]{6,}/i;
+  /^(https?:\/\/)?((www|m|music)\.)?(youtube\.com\/(watch\?(.*&)?v=|shorts\/|live\/|embed\/|playlist\?(.*&)?list=)|youtu\.be\/)[\w-]{6,}/i;
 
 export const problemaDeUrl = (url: string): string | null => {
   const limpia = url.trim();
@@ -32,11 +33,12 @@ const textoONulo = (texto: string): string | null => {
   return limpio.length > 0 ? limpio : null;
 };
 
-/** Petición con la forma exacta de `PeticionProceso` (CONTRATO.md §5): `null` en lo que no aplica. */
-export const aPeticion = (formulario: FormularioProceso): PeticionProceso => {
+/** Petición con la forma exacta de `PeticionProceso` (CONTRATO.md §5): `null` en lo que no aplica.
+ * Con URL, `urlVideo` es la del vídeo concreto elegido en la vista previa. */
+export const aPeticion = (formulario: FormularioProceso, urlVideo: string | null = null): PeticionProceso => {
   const esUrl = formulario.origen === OrigenAudio.Url;
   return {
-    url: esUrl ? formulario.url.trim() : null,
+    url: esUrl ? (urlVideo ?? formulario.url.trim()) : null,
     archivo: esUrl ? null : formulario.archivo,
     titulo: esUrl ? null : textoONulo(formulario.titulo),
     artista: esUrl ? null : textoONulo(formulario.artista),

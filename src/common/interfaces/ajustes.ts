@@ -24,10 +24,6 @@ export interface Ajustes {
   grabar: boolean;
   /** Carpeta de la fábrica (la del repositorio o `fabrica/`); `null` = la de desarrollo. */
   carpeta_fabrica: string | null;
-  /** cookies.txt con tu sesión de YouTube (si pide confirmar que no eres un bot). */
-  youtube_cookies: string | null;
-  /** Navegador del que leer la sesión: firefox, safari, chrome, edge, brave. */
-  youtube_navegador: string | null;
 }
 
 export interface ResultadoCalibracion {

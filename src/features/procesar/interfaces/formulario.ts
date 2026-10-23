@@ -9,6 +9,7 @@ export type IdiomaFormulario = Idioma | typeof IDIOMA_AUTOMATICO;
 
 export interface FormularioProceso {
   origen: OrigenAudio;
+  /** Lo que escribió el usuario; la vista previa se pide con «Analizar». */
   url: string;
   archivo: string | null;
   titulo: string;

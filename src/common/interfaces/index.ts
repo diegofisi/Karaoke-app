@@ -5,3 +5,4 @@ export * from "./ajustes";
 export * from "./juego";
 export * from "./grabaciones";
 export * from "./youtube";
+export * from "./vista_previa";

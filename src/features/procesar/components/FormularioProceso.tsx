@@ -15,6 +15,9 @@ import AudioFileIcon from "@mui/icons-material/AudioFile";
 import AutoFixHighIcon from "@mui/icons-material/AutoFixHigh";
 import FolderOpenIcon from "@mui/icons-material/FolderOpen";
 import YouTubeIcon from "@mui/icons-material/YouTube";
+import SearchIcon from "@mui/icons-material/Search";
+import type { VistaPrevia } from "@/common/interfaces";
+import { VistaPreviaUrl } from "./VistaPreviaUrl";
 import { Idioma } from "@/common/interfaces";
 import { NOMBRE_IDIOMA, aIdioma } from "@/common/helpers/textos";
 import { nombreDeArchivo } from "../helpers/formulario";
@@ -35,6 +38,13 @@ export interface FormularioProcesoProps {
   onEnviar: () => void;
   arrancando: boolean;
   fabricaNoLista: boolean;
+  onAnalizar: () => void;
+  analizando: boolean;
+  errorAnalisis: string | null;
+  vista: VistaPrevia | null;
+  seleccion: Set<string>;
+  onCambiarSeleccion: (url: string, seleccionado: boolean) => void;
+  onSeleccionarTodos: (seleccionar: boolean) => void;
 }
 
 export const FormularioProceso = ({
@@ -47,6 +57,13 @@ export const FormularioProceso = ({
   onEnviar,
   arrancando,
   fabricaNoLista,
+  onAnalizar,
+  analizando,
+  errorAnalisis,
+  vista,
+  seleccion,
+  onCambiarSeleccion,
+  onSeleccionarTodos,
 }: FormularioProcesoProps) => {
   const alEnviar = (evento: FormEvent<HTMLFormElement>) => {
     evento.preventDefault();
@@ -78,16 +95,47 @@ export const FormularioProceso = ({
         </ToggleButtonGroup>
 
         {esUrl ? (
-          <TextField
-            label="URL de YouTube"
-            placeholder="https://www.youtube.com/watch?v=…"
-            value={formulario.url}
-            onChange={(evento) => cambiar("url", evento.target.value)}
-            error={errorVisible}
-            helperText={errorVisible ? problema : "El título y el artista se leen del vídeo."}
-            fullWidth
-            autoFocus
-          />
+          <Stack spacing={2}>
+            <Stack direction="row" spacing={1.5} sx={{ alignItems: "flex-start" }}>
+              <TextField
+                label="URL de YouTube"
+                placeholder="Vídeo o lista: youtube.com/watch?v=… o youtube.com/playlist?list=…"
+                value={formulario.url}
+                onChange={(evento) => cambiar("url", evento.target.value)}
+                onKeyDown={(evento) => {
+                  if (evento.key === "Enter") {
+                    evento.preventDefault();
+                    onAnalizar();
+                  }
+                }}
+                error={errorVisible}
+                helperText={
+                  errorVisible ? problema : "Pega un vídeo o una lista y pulsa Analizar para ver qué se va a procesar."
+                }
+                fullWidth
+                autoFocus
+              />
+              <Button
+                type="button"
+                variant="outlined"
+                startIcon={<SearchIcon />}
+                onClick={onAnalizar}
+                disabled={analizando || formulario.url.trim().length === 0}
+                sx={{ mt: 1, whiteSpace: "nowrap" }}
+              >
+                Analizar
+              </Button>
+            </Stack>
+            <VistaPreviaUrl
+              analizando={analizando}
+              error={errorAnalisis}
+              vista={vista}
+              seleccion={seleccion}
+              onCambiar={onCambiarSeleccion}
+              onTodos={onSeleccionarTodos}
+              onReintentar={onAnalizar}
+            />
+          </Stack>
         ) : (
           <Stack spacing={2}>
             <Stack direction="row" spacing={2} sx={{ alignItems: "center" }}>
@@ -156,9 +204,21 @@ export const FormularioProceso = ({
             variant="contained"
             size="large"
             startIcon={<AutoFixHighIcon />}
-            disabled={arrancando || fabricaNoLista || (mostrarProblema && problema !== null)}
+            disabled={
+              arrancando ||
+              analizando ||
+              fabricaNoLista ||
+              (mostrarProblema && problema !== null) ||
+              (esUrl && vista !== null && seleccion.size === 0)
+            }
           >
-            {arrancando ? "Arrancando…" : "Procesar"}
+            {arrancando
+              ? "Arrancando…"
+              : esUrl && vista === null
+                ? "Analizar y procesar"
+                : esUrl && seleccion.size > 1
+                  ? `Procesar ${seleccion.size} canciones`
+                  : "Procesar"}
           </Button>
         </Box>
       </Stack>

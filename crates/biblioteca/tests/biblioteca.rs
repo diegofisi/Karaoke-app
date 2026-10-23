@@ -253,8 +253,6 @@ fn ajustes_por_defecto_sin_archivo_o_corrupto() {
         mostrar_romaji: true,
         grabar: false,
         carpeta_fabrica: None,
-        youtube_cookies: None,
-        youtube_navegador: None,
     };
     assert_eq!(Ajustes::default(), defecto);
     assert_eq!(b.leer_ajustes(), defecto);
@@ -290,8 +288,6 @@ fn ajustes_ida_y_vuelta() {
         mostrar_romaji: false,
         grabar: false,
         carpeta_fabrica: Some("/Users/yo/Karaoke".to_string()),
-        youtube_cookies: Some("/Users/yo/cookies.txt".to_string()),
-        youtube_navegador: None,
     };
     assert_eq!(b.guardar_ajustes(&a).unwrap(), a);
     assert_eq!(b.leer_ajustes(), a);

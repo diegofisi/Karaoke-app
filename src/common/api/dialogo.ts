@@ -11,17 +11,6 @@ export const elegirCarpeta = async (titulo: string): Promise<string | null> => {
   return typeof eleccion === "string" ? eleccion : null;
 };
 
-/** Archivo cookies.txt, o `null` si el usuario cancela. */
-export const elegirArchivoCookies = async (): Promise<string | null> => {
-  const eleccion = await open({
-    title: "Elige el archivo cookies.txt de YouTube",
-    multiple: false,
-    directory: false,
-    filters: [{ name: "Cookies", extensions: ["txt"] }],
-  });
-  return typeof eleccion === "string" ? eleccion : null;
-};
-
 /** Ruta absoluta del archivo elegido, o `null` si el usuario cancela. */
 export const elegirArchivoAudio = async (): Promise<string | null> => {
   const eleccion = await open({

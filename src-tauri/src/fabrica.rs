@@ -130,8 +130,8 @@ pub fn id_de_peticion(p: &PeticionProceso) -> Result<String, String> {
 /// Sesion de YouTube de Ajustes, para cuando YouTube pide confirmar que no eres un bot.
 #[derive(Debug, Clone, Default)]
 pub struct SesionYoutube {
+    /// cookies.txt de la sesion iniciada en la app.
     pub cookies: Option<String>,
-    pub navegador: Option<String>,
 }
 
 pub fn argumentos(
@@ -161,8 +161,6 @@ pub fn argumentos(
     }
     if let Some(c) = &sesion.cookies {
         a.extend(["--cookies".into(), c.clone()]);
-    } else if let Some(n) = &sesion.navegador {
-        a.extend(["--navegador".into(), n.clone()]);
     }
     a
 }

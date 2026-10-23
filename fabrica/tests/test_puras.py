@@ -265,8 +265,8 @@ def test_detecta_el_bloqueo_de_bot():
 def test_opciones_con_cookies_y_cliente():
     o = opciones_base({}, SesionYoutube(cookies=Path("c.txt")))
     assert o["cookiefile"] == "c.txt" and o["format"] == "bestaudio/best"
-    o = opciones_base({}, SesionYoutube(navegador="firefox"))
-    assert o["cookiesfrombrowser"] == ("firefox",) and "cookiefile" not in o
+    o = opciones_base({}, SesionYoutube())
+    assert "cookiefile" not in o and o["noplaylist"] is True
 
 
 from karaoke_fabrica.descarga import artista_y_titulo_de_nombre  # noqa: E402
@@ -277,13 +277,14 @@ def test_artista_y_titulo_del_nombre_del_archivo():
     assert artista_y_titulo_de_nombre("solo titulo") == ("", "solo titulo")
 
 
-def test_bloqueo_con_navegador_no_se_confunde_con_fallo_de_cookies():
+def test_bloqueo_no_se_confunde_con_fallo_de_cookies(tmp_path):
     from karaoke_fabrica.descarga import _error_de_sesion
 
     bloqueo = Exception("ERROR: [youtube] x: Sign in to confirm you're not a bot. Use --cookies-from-browser or --cookies")
-    assert _error_de_sesion(bloqueo, SesionYoutube(navegador="firefox")) is None
-    dpapi = Exception("ERROR: Failed to decrypt with DPAPI")
-    assert "Firefox" in _error_de_sesion(dpapi, SesionYoutube(navegador="chrome"))
+    assert _error_de_sesion(bloqueo, SesionYoutube(cookies=tmp_path / "no-existe.txt")) is None
+    otro = Exception("ERROR: Video unavailable")
+    assert "No se encontro" in _error_de_sesion(otro, SesionYoutube(cookies=tmp_path / "no-existe.txt"))
+    assert _error_de_sesion(otro, SesionYoutube()) is None
 
 
 def test_id_local_es_sha1_del_archivo_completo(tmp_path):

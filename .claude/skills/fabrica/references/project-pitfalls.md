@@ -38,9 +38,9 @@ Las entradas del 2026-10-15 vienen de las dos versiones anteriores (rama
   opinión (MMS) — dónde: `alineacion.py` (`CONFIANZA_MINIMA`, `USAR_MMS`).
 - 2026-10-16 — YouTube a veces responde "Sign in to confirm you're not a bot"
   (bloqueo por conexión, tras muchas descargas). Lo fiable es la sesión del
-  usuario: `--cookies <cookies.txt>` o `--navegador`. En Windows yt-dlp no
-  puede leer cookies de Chrome, Brave (cifrado DPAPI) ni Edge (bloqueado si
-  está abierto): solo Firefox o el archivo. Los clientes alternativos (tv,
+  usuario: `--cookies <cookies.txt>` (la app lo guarda al iniciar sesión).
+  `--navegador` se quitó el 2026-10-22: en Windows yt-dlp no puede leer
+  cookies de Chrome, Brave (cifrado DPAPI) ni Edge. Los clientes alternativos (tv,
   web_safari, mweb) fallaban incluso sin bloqueo: no se usan — dónde:
   `fabrica/karaoke_fabrica/descarga.py`.
 - 2026-10-16 — En CPU, los modelos van en bfloat16: en float32 el
