@@ -174,6 +174,15 @@ fn comando_python(u: &Ubicacion) -> Command {
         .env("PYTHONUNBUFFERED", "1")
         .env("PYTHONIOENCODING", "utf-8")
         .stdin(Stdio::null());
+    // Ruta exacta del Deno empaquetado (o del sistema): la fabrica no depende
+    // de encontrarlo por nombre en el PATH (fallaba en Mac: sin runtime de
+    // JavaScript, YouTube no da ningun formato).
+    if let Some(deno) = herramientas::runtime_js() {
+        c.env("KARAOKE_DENO", deno);
+    }
+    if let Some(ffmpeg) = herramientas::buscar("ffmpeg") {
+        c.env("KARAOKE_FFMPEG", ffmpeg);
+    }
     sin_ventana(&mut c);
     c
 }

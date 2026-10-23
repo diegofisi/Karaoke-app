@@ -261,6 +261,9 @@ pub fn instalar(
             &py_texto,
             "--reinstall-package",
             "karaoke-fabrica",
+            // yt-dlp cambia cada pocas semanas con YouTube: siempre el ultimo.
+            "--upgrade-package",
+            "yt-dlp",
             &fuente,
         ]),
         |t| enviar(EventoInstalacion::Linea { texto: t }),

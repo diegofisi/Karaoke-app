@@ -7,7 +7,7 @@ packages = ["karaoke_fabrica"]
 
 [project]
 name = "karaoke-fabrica"
-version = "0.2.7"
+version = "0.2.8"
 description = "Fabrica del karaoke: descarga, separa, alinea la letra y saca el tono de referencia"
 requires-python = ">=3.12,<3.13"
 dependencies = [
@@ -19,7 +19,7 @@ dependencies = [
     "audio-separator[gpu]; sys_platform == 'win32' or sys_platform == 'linux'",
     "audio-separator; sys_platform == 'darwin'",
     "audioread",
-    "yt-dlp",
+    "yt-dlp[default]>=2026.10.21",  # [default] trae yt-dlp-ejs (resuelve el desafio de YouTube); se sube en cada version
     "requests",
     "soundfile",
     "numpy",

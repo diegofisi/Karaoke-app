@@ -29,14 +29,26 @@ def id_youtube(url: str) -> str:
     return m.group(1)
 
 
+def ffmpeg() -> str:
+    """El ffmpeg que trae la app (KARAOKE_FFMPEG, ruta exacta) o el del PATH."""
+    import os
+
+    ruta = os.environ.get("KARAOKE_FFMPEG", "")
+    return ruta if ruta and Path(ruta).is_file() else "ffmpeg"
+
+
 def a_wav(origen: Path, destino: Path) -> None:
     """Convierte cualquier audio a WAV PCM 16 bits, 44,1 kHz, estereo."""
     tmp = destino.with_suffix(".tmp.wav")
-    resultado = subprocess.run(
-        ["ffmpeg", "-y", "-loglevel", "error", "-i", str(origen), "-vn", "-ar", "44100", "-ac", "2",
-         "-c:a", "pcm_s16le", str(tmp)],
-        capture_output=True, text=True,
-    )
+    try:
+        resultado = subprocess.run(
+            [ffmpeg(), "-y", "-loglevel", "error", "-i", str(origen), "-vn", "-ar", "44100", "-ac", "2",
+             "-c:a", "pcm_s16le", str(tmp)],
+            capture_output=True, text=True,
+        )
+    except FileNotFoundError as e:
+        raise ErrorFabrica("descarga", "No se encontro ffmpeg para convertir el audio. Reinstala la app "
+                           "(lo trae incluido) o instala ffmpeg.") from e
     if resultado.returncode != 0:
         raise ErrorFabrica("descarga", f"No se pudo convertir el audio con ffmpeg: {resultado.stderr.strip()[:300]}")
     tmp.replace(destino)
@@ -61,13 +73,66 @@ def runtimes_js() -> dict:
     ))
     ruta = os.environ.get("PATH", "") + os.pathsep + extra
     disponibles: dict = {}
+    # La app pasa la ruta exacta del Deno que trae empaquetado (KARAOKE_DENO):
+    # no depende del PATH ni del nombre del archivo (visto fallar en Mac el 2026-10-22).
+    empaquetado = os.environ.get("KARAOKE_DENO", "")
+    if empaquetado and Path(empaquetado).is_file():
+        disponibles["deno"] = {"path": empaquetado}
     for nombre in ("deno", "node", "bun"):
+        if nombre in disponibles:
+            continue
         encontrado = shutil.which(nombre, path=ruta)
         if encontrado:
             disponibles[nombre] = {"path": encontrado}
     if not disponibles:
-        aviso("No hay Deno, Node ni Bun en el PATH: YouTube puede rechazar la descarga (HTTP 403).")
+        aviso("No hay Deno, Node ni Bun: YouTube no suele dar ningun formato sin un runtime de JavaScript.")
+    log.info("Runtimes de JavaScript: %s", disponibles or "ninguno")
     return disponibles
+
+
+def diagnostico_yt_dlp(js: dict) -> str:
+    """Para los mensajes de error: version de yt-dlp y runtimes vistos."""
+    import yt_dlp
+
+    runtimes = ", ".join(f"{n} ({v['path']})" for n, v in js.items()) or "ninguno"
+    return f"yt-dlp {yt_dlp.version.__version__}; runtimes de JavaScript: {runtimes}"
+
+
+SIN_FORMATOS = "requested format is not available"
+
+
+def explicar_lectura(e: Exception, js: dict, avisos_yt_dlp: list[str] | None = None) -> str:
+    """Mensaje para un fallo al leer el video que no es bloqueo ni sesion.
+    `avisos_yt_dlp`: los WARNING que yt-dlp emitio antes (dicen por que salto formatos)."""
+    if SIN_FORMATOS in str(e).lower():
+        porque = " ".join(a.strip() for a in (avisos_yt_dlp or [])[-3:])
+        return ("YouTube no dio ningun formato de audio. Pasa cuando yt-dlp no tiene un runtime de JavaScript "
+                "(Deno), esta anticuado, o YouTube pide un PO token con la sesion iniciada. "
+                + diagnostico_yt_dlp(js) + (f". yt-dlp dijo: {porque}" if porque else "")
+                + ". Actualiza la fabrica en Ajustes > Fabrica (instala el yt-dlp mas reciente); si sigue, "
+                "cierra la sesion de YouTube en Ajustes o procesa la cancion desde un archivo de audio.")
+    return f"No se pudo leer el video: {e}"
+
+
+class RegistroYtDlp:
+    """Logger para yt-dlp: todo va al registro de la fabrica y los WARNING se
+    guardan para explicar un fallo ("formats have been skipped...")."""
+
+    def __init__(self) -> None:
+        self.avisos: list[str] = []
+
+    def debug(self, msg: str) -> None:
+        log.debug("yt-dlp: %s", msg)
+
+    def info(self, msg: str) -> None:
+        log.info("yt-dlp: %s", msg)
+
+    def warning(self, msg: str) -> None:
+        self.avisos.append(msg)
+        log.warning("yt-dlp: %s", msg)
+
+    def error(self, msg: str) -> None:
+        log.error("yt-dlp: %s", msg)
 
 
 def _artista_y_titulo(info: dict) -> tuple[str, str]:
@@ -174,23 +239,35 @@ def _descargar(url: str, carpeta: Path, sesion: SesionYoutube) -> Metadatos:
 
     etapa("descarga", 0.0, "Leyendo datos del video" + (" (con tu sesion de YouTube)" if sesion.activa else ""))
     js = runtimes_js()
+    registro = RegistroYtDlp()
     info = None
     ultimo: Exception | None = None
-    for intento in range(REINTENTOS_BLOQUEO + 1):
+    intento = 0
+    while intento <= REINTENTOS_BLOQUEO:
         try:
-            with yt_dlp.YoutubeDL({**opciones_base(js, sesion), "skip_download": True}) as ydl:
+            with yt_dlp.YoutubeDL({**opciones_base(js, sesion), "skip_download": True, "logger": registro}) as ydl:
                 info = ydl.extract_info(url_limpia, download=False)
             break
         except Exception as e:  # yt-dlp lanza DownloadError y otros
             ultimo = e
+            intento += 1
             mensaje_sesion = _error_de_sesion(e, sesion)
             if mensaje_sesion:
                 raise ErrorFabrica("descarga", mensaje_sesion) from e
             if sesion.activa and es_sesion_rechazada(e):
                 raise ErrorFabrica("descarga", MENSAJE_RECHAZO, CODIGO_RECHAZO) from e
+            if sesion.activa and SIN_FORMATOS in str(e).lower():
+                # Con sesion, YouTube puede exigir un PO token y yt-dlp salta todos
+                # los formatos; sin sesion suele darlos. Se prueba anonimo.
+                aviso("YouTube no dio formatos con tu sesion iniciada; se prueba sin ella.")
+                log.warning("Sin formatos con sesion (%s); reintento anonimo", "; ".join(registro.avisos[-3:]))
+                sesion = SesionYoutube()
+                registro = RegistroYtDlp()
+                intento -= 1  # no gasta el reintento por bloqueo de bot
+                continue
             if not es_bloqueo_bot(e):
-                raise ErrorFabrica("descarga", f"No se pudo leer el video: {e}") from e
-            if intento < REINTENTOS_BLOQUEO:
+                raise ErrorFabrica("descarga", explicar_lectura(e, js, registro.avisos)) from e
+            if intento <= REINTENTOS_BLOQUEO:
                 aviso("YouTube pidio confirmar que no eres un bot; reintentando en unos segundos.")
                 import time
 
@@ -220,7 +297,8 @@ def _descargar(url: str, carpeta: Path, sesion: SesionYoutube) -> Metadatos:
                 etapa("descarga", 0.05 + 0.85 * d.get("downloaded_bytes", 0) / total, "Descargando audio")
 
     plantilla = str(carpeta / "descarga.%(ext)s")
-    opciones = {**opciones_base(js, sesion), "outtmpl": plantilla, "progress_hooks": [progreso]}
+    registro = RegistroYtDlp()
+    opciones = {**opciones_base(js, sesion), "outtmpl": plantilla, "progress_hooks": [progreso], "logger": registro}
     try:
         with yt_dlp.YoutubeDL(opciones) as ydl:
             ydl.download([url_limpia])
@@ -228,6 +306,8 @@ def _descargar(url: str, carpeta: Path, sesion: SesionYoutube) -> Metadatos:
         if es_bloqueo_bot(e):
             codigo = CODIGO_RECHAZO if sesion.activa else CODIGO_BLOQUEO
             raise ErrorFabrica("descarga", MENSAJE_RECHAZO if sesion.activa else AYUDA_BLOQUEO, codigo) from e
+        if SIN_FORMATOS in str(e).lower():
+            raise ErrorFabrica("descarga", explicar_lectura(e, js, registro.avisos)) from e
         raise ErrorFabrica("descarga", f"No se pudo descargar el audio: {e}") from e
 
     bajados = [p for p in carpeta.glob("descarga.*") if p.suffix not in (".part", ".ytdl")]

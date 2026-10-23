@@ -161,3 +161,17 @@ el reconocedor en float32 ocupaba 12 GB de RAM y colgaba equipos de 8-16 GB).
   por falta de letra (decisión del usuario).
 - Mac: `Entitlements.plist` con `com.apple.security.device.audio-input`
   (hardened runtime): sin él el micrófono entregaba silencio.
+
+## Deno explícito para la fábrica (2026-10-22, versión 0.2.8)
+
+"Requested format is not available" en la descarga (Mac): yt-dlp solo tiene
+formatos si resuelve el desafío de YouTube, y para eso necesita Deno **y**
+los scripts `yt-dlp-ejs` (vienen con `yt-dlp[default]`; instalábamos
+`yt-dlp` a secas y faltaban: lo dijeron los WARNING de yt-dlp, que ahora se
+capturan). Además la fábrica buscaba `deno` y `ffmpeg` por nombre en el
+PATH; ahora la app pasa las rutas exactas (`KARAOKE_DENO`,
+`KARAOKE_FFMPEG`). `pyproject.toml` exige `yt-dlp[default]>=2026.10.21` y la
+reinstalación lo sube (`--upgrade-package yt-dlp`). Con sesión iniciada y sin
+formatos se reintenta anónimo. El error, si vuelve, dice la versión de
+yt-dlp, los runtimes vistos y los avisos de yt-dlp. Probado: descarga real
+con PATH vacío en Windows (42 formatos, sin avisos).

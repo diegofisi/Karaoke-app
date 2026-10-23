@@ -366,3 +366,75 @@ def test_lrclib_reintenta_los_5xx_y_devuelve_al_recuperarse(monkeypatch):
     monkeypatch.setattr(time, "sleep", esperas.append)
     assert m._pedir("get", {}) == {"id": 1}
     assert esperas == [2.0, 4.0]
+
+
+def test_runtimes_js_usa_el_deno_que_pasa_la_app(tmp_path, monkeypatch):
+    from karaoke_fabrica.descarga import runtimes_js
+
+    deno = tmp_path / "deno-x86_64-pc-windows-msvc.exe"
+    deno.write_bytes(b"")
+    monkeypatch.setenv("KARAOKE_DENO", str(deno))
+    monkeypatch.setenv("PATH", "")
+    assert runtimes_js()["deno"] == {"path": str(deno)}
+    # Una ruta que no existe se ignora, sin romper.
+    monkeypatch.setenv("KARAOKE_DENO", str(tmp_path / "no-existe"))
+    assert "deno" not in runtimes_js() or runtimes_js()["deno"]["path"] != str(tmp_path / "no-existe")
+
+
+def test_sin_formatos_explica_runtime_y_version():
+    from karaoke_fabrica.descarga import explicar_lectura
+
+    e = Exception("ERROR: [youtube] x: Requested format is not available. Use --list-formats")
+    m = explicar_lectura(e, {})
+    assert "runtime de JavaScript" in m and "ninguno" in m and "yt-dlp 20" in m
+    m = explicar_lectura(e, {"deno": {"path": "/app/deno"}}, ["[youtube] x: Some web client https formats have been skipped as they are missing a PO token"])
+    assert "deno (/app/deno)" in m and "yt-dlp dijo: [youtube] x: Some web client" in m
+    assert explicar_lectura(Exception("Video unavailable"), {}) == "No se pudo leer el video: Video unavailable"
+
+
+def test_sin_formatos_con_sesion_reintenta_anonimo(tmp_path, monkeypatch):
+    """Con sesion y "Requested format is not available", se vuelve a leer sin cookies."""
+    import karaoke_fabrica.descarga as d
+
+    vistas: list[bool] = []
+
+    class FalsoYdl:
+        def __init__(self, opciones):
+            vistas.append("cookiefile" in opciones)
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+        def extract_info(self, url, download=False):
+            if vistas[-1]:
+                raise Exception("ERROR: [youtube] x: Requested format is not available")
+            return {"duration": 100.0, "title": "A - B"}
+
+        def download(self, urls):
+            (tmp_path / "descarga.webm").write_bytes(b"x")
+
+    import sys
+
+    # `_descargar` hace `import yt_dlp` dentro: se sustituye el modulo entero.
+    monkeypatch.setitem(sys.modules, "yt_dlp", type("M", (), {"YoutubeDL": FalsoYdl}))
+    monkeypatch.setattr(d, "runtimes_js", lambda: {})
+    monkeypatch.setattr(d, "a_wav", lambda origen, destino: destino.write_bytes(b"wav"))
+    monkeypatch.setattr(d, "aviso", lambda m: None)
+    cookies = tmp_path / "c.txt"
+    cookies.write_text("# Netscape HTTP Cookie File\n")
+    meta = d._descargar("https://youtu.be/ppqGf02Pii8", tmp_path, d.SesionYoutube(cookies=cookies))
+    assert vistas[:2] == [True, False] and meta.titulo == "B" and (tmp_path / "original.wav").exists()
+
+
+def test_ffmpeg_usa_la_ruta_que_pasa_la_app(tmp_path, monkeypatch):
+    from karaoke_fabrica.descarga import ffmpeg
+
+    exe = tmp_path / "ffmpeg-x86_64-pc-windows-msvc.exe"
+    exe.write_bytes(b"")
+    monkeypatch.setenv("KARAOKE_FFMPEG", str(exe))
+    assert ffmpeg() == str(exe)
+    monkeypatch.setenv("KARAOKE_FFMPEG", str(tmp_path / "no-existe"))
+    assert ffmpeg() == "ffmpeg"

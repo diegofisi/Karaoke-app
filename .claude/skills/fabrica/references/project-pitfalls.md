@@ -50,3 +50,14 @@ Las entradas del 2026-10-15 vienen de las dos versiones anteriores (rama
 - 2026-10-16 — Al reconocer por grupos (para mostrar el avance), el grupo
   debe tener el tamaño del lote interno del reconocedor (`LOTE_ASR`): con
   grupos de 2 cambiaban los lotes y una canción bajó de 73,7 % a 39,7 %.
+- 2026-10-22 — yt-dlp (≥ 2026) solo da formatos de YouTube si resuelve su
+  desafío: necesita un runtime de JavaScript (Deno) **y** los scripts
+  `yt-dlp-ejs`, que vienen con `yt-dlp[default]`, no con `yt-dlp` a secas.
+  Síntoma: "Requested format is not available" en la descarga (Mac), con
+  WARNING "Signature solving failed… challenge solver script distribution".
+  Captura siempre los WARNING de yt-dlp (`RegistroYtDlp`) y ponlos en el
+  error. Las rutas de `deno` y `ffmpeg` llegan de la app por `KARAOKE_DENO`
+  y `KARAOKE_FFMPEG`; no busques por nombre en el PATH (en desarrollo los
+  sidecars llevan la tripleta en el nombre) — dónde:
+  `fabrica/karaoke_fabrica/descarga.py`, `fabrica/pyproject.toml`,
+  `src-tauri/src/fabrica.rs`.
